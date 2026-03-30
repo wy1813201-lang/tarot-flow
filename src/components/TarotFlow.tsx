@@ -4,10 +4,7 @@ import { SPREADS, SpreadType } from '../constants/tarot';
 import { shuffleDeck, generateHash, getCardsFromSelection, TarotSession } from '../lib/tarotLogic';
 import { interpretTarotStream, interpretSupplementary } from '../services/ai';
 import { TarotReading } from '../types/reading';
-import { db, auth } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
 import { ArrowRight, ArrowLeft, RefreshCw, Hash, CheckCircle2, Loader2, Sparkles, ChevronRight, ShieldAlert, Plus, Zap, Columns, Layout, Heart, Briefcase, Calendar, Compass, AlertCircle } from 'lucide-react';
-import { handleFirestoreError, OperationType } from '../lib/errorHandlers';
 
 type Step = 'setup' | 'shuffle' | 'select' | 'result';
 
@@ -97,11 +94,11 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
       const finalSession = { ...session, chosenNumbers, reading: result };
 
       try {
-        if (auth.currentUser) {
-          await addDoc(collection(db, 'users', auth.currentUser.uid, 'sessions'), finalSession);
-        }
+        const existing = JSON.parse(localStorage.getItem('tarot_sessions') || '[]');
+        existing.unshift({ id: crypto.randomUUID(), ...finalSession });
+        localStorage.setItem('tarot_sessions', JSON.stringify(existing.slice(0, 100)));
       } catch (err) {
-        console.error("Firestore save failed:", err);
+        console.error('localStorage save failed:', err);
       }
       setReading(result);
       setStep('result');
