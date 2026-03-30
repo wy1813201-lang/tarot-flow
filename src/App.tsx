@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, User } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import TarotFlow from './components/TarotFlow';
@@ -12,10 +12,6 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'home' | 'flow' | 'history'>('home');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
@@ -46,24 +42,11 @@ export default function App() {
   }, []);
 
   const handleLogin = async () => {
-    setAuthError('');
     setAuthLoading(true);
     try {
-      if (authMode === 'register') {
-        await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-    } catch (error: any) {
-      const msg: Record<string, string> = {
-        'auth/email-already-in-use': '该邮箱已注册，请直接登录',
-        'auth/invalid-email': '邮箱格式不正确',
-        'auth/weak-password': '密码至少需要6位',
-        'auth/user-not-found': '账号不存在，请先注册',
-        'auth/wrong-password': '密码错误',
-        'auth/invalid-credential': '邮箱或密码错误',
-      };
-      setAuthError(msg[error.code] || error.message);
+      await signInAnonymously(auth);
+    } catch (error) {
+      console.error('Login failed:', error);
     } finally {
       setAuthLoading(false);
     }
@@ -92,39 +75,17 @@ export default function App() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-sm w-full"
+            className="max-w-md"
           >
-            <h1 className="text-6xl font-serif font-light mb-2 tracking-tighter">Tarot Flow</h1>
-            <p className="text-gray-400 mb-8 font-light italic">先洗牌，再选数，再翻开答案。</p>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4 text-left">
-              <div className="flex gap-2 mb-2">
-                <button onClick={() => { setAuthMode('login'); setAuthError(''); }} className={`flex-1 py-2 rounded-full text-sm font-medium transition-colors ${authMode === 'login' ? 'bg-[#ff4e00] text-white' : 'text-gray-400 hover:text-white'}`}>登录</button>
-                <button onClick={() => { setAuthMode('register'); setAuthError(''); }} className={`flex-1 py-2 rounded-full text-sm font-medium transition-colors ${authMode === 'register' ? 'bg-[#ff4e00] text-white' : 'text-gray-400 hover:text-white'}`}>注册</button>
-              </div>
-              <input
-                type="email"
-                placeholder="邮箱"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#ff4e00]/50"
-              />
-              <input
-                type="password"
-                placeholder="密码（至少6位）"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#ff4e00]/50"
-              />
-              {authError && <p className="text-red-400 text-sm">{authError}</p>}
-              <button
-                onClick={handleLogin}
-                disabled={authLoading || !email || !password}
-                className="w-full py-3 bg-[#ff4e00] text-white rounded-full font-medium hover:bg-[#e64600] transition-colors disabled:opacity-50"
-              >
-                {authLoading ? '处理中...' : authMode === 'login' ? '登录' : '注册'}
-              </button>
-            </div>
+            <h1 className="text-6xl font-serif font-light mb-4 tracking-tighter">Tarot Flow</h1>
+            <p className="text-gray-400 mb-8 font-light italic">先洗牌，再选数，再翻开答案。每一轮都固定，每一张都有位置。</p>
+            <button
+              onClick={handleLogin}
+              disabled={authLoading}
+              className="px-8 py-3 bg-[#ff4e00] text-white rounded-full font-medium hover:bg-[#e64600] transition-colors shadow-lg shadow-[#ff4e00]/20 disabled:opacity-50"
+            >
+              {authLoading ? '连接中...' : '开启灵感之旅'}
+            </button>
           </motion.div>
         </div>
       ) : (
