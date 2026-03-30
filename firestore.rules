@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string;
+    }
+    function isValidSession(data) {
+      return data.keys().hasAll(['question', 'spreadType', 'shuffledDeck', 'orientations', 'hash', 'createdAt']) &&
+             data.keys().hasOnly(['uid', 'question', 'spreadType', 'isStrictMode', 'shuffledDeck', 'orientations', 'hash', 'chosenNumbers', 'reading', 'createdAt']) &&
+             data.question is string && data.question.size() < 500 &&
+             data.spreadType in ['single', 'three', 'five', 'ten', 'relationship', 'career', 'week'] &&
+             data.shuffledDeck is list && data.shuffledDeck.size() == 78 &&
+             data.orientations is list && data.orientations.size() == 78 &&
+             data.hash is string && data.hash.size() == 64;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      match /sessions/{sessionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSession(request.resource.data);
+        allow update: if isOwner(userId) && isValidSession(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

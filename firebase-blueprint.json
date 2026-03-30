@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "TarotSession": {
+      "title": "Tarot Session",
+      "description": "A single divination session",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "question": { "type": "string" },
+        "spreadType": { "type": "string", "enum": ["single", "three", "five", "ten", "relationship", "career", "week"] },
+        "isStrictMode": { "type": "boolean" },
+        "shuffledDeck": { "type": "array", "items": { "type": "integer" } },
+        "orientations": { "type": "array", "items": { "type": "string", "enum": ["upright", "reversed"] } },
+        "hash": { "type": "string" },
+        "chosenNumbers": { "type": "array", "items": { "type": "integer" } },
+        "reading": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "question", "spreadType", "shuffledDeck", "orientations", "hash", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/sessions/{sessionId}": {
+      "schema": "TarotSession",
+      "description": "Divination sessions"
+    }
+  }
+}

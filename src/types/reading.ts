@@ -1,0 +1,19 @@
+export interface CardInterpretation {
+  position: string;
+  card: string;
+  meaning: string;
+}
+
+export interface ReadingSuggestions {
+  actionableSteps: string;
+  mindsetShift: string;
+  warningSigns: string;
+}
+
+export interface TarotReading {
+  summary: string;
+  detailedInterpretations: CardInterpretation[];
+  overallTrend: string;
+  suggestions: ReadingSuggestions;
+  finalAdvice: string;
+}
