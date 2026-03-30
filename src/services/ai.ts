@@ -14,8 +14,8 @@ interface AIConfig {
 
 function getConfig(): AIConfig {
   const provider = (import.meta.env.VITE_AI_PROVIDER || 'gemini') as AIProvider;
-  const apiKey = import.meta.env.VITE_AI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) throw new Error("请配置 VITE_AI_API_KEY 或 VITE_GEMINI_API_KEY 环境变量");
+  const apiKey = import.meta.env.VITE_AI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || 'proxy';
+  // On Vercel, OpenAI calls go through /api/proxy — no client-side key needed.
 
   const defaults: Record<AIProvider, { baseUrl: string; model: string; modelLight: string }> = {
     gemini: { baseUrl: '', model: 'gemini-2.5-pro-preview-05-06', modelLight: 'gemini-2.0-flash' },
