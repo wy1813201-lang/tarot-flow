@@ -45,7 +45,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
     const hash = await generateHash(deck, orientations, sessionId);
 
     setSession({
-      uid: auth.currentUser?.uid || 'local-dev',
+      uid: 'local',
       question,
       spreadType,
       isStrictMode,
