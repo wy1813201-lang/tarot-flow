@@ -2,18 +2,28 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const AI_API_KEY = process.env.AI_API_KEY!;
 const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
+const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || '';
+const MINIMAX_BASE_URL = 'https://api.minimaxi.com/v1';
+
+function getProviderConfig(provider?: string) {
+  if (provider === 'minimax' && MINIMAX_API_KEY) {
+    return { apiKey: MINIMAX_API_KEY, baseUrl: MINIMAX_BASE_URL };
+  }
+  return { apiKey: AI_API_KEY, baseUrl: AI_BASE_URL };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { path = 'chat/completions', ...body } = req.body;
+  const { path = 'chat/completions', provider, ...body } = req.body;
+  const { apiKey, baseUrl } = getProviderConfig(provider);
 
   try {
-    const upstream = await fetch(`${AI_BASE_URL}/${path}`, {
+    const upstream = await fetch(`${baseUrl}/${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
     });

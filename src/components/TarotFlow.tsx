@@ -4,9 +4,34 @@ import { SPREADS, SpreadType } from '../constants/tarot';
 import { shuffleDeck, generateHash, getCardsFromSelection, TarotSession } from '../lib/tarotLogic';
 import { interpretTarotStream, interpretSupplementary } from '../services/ai';
 import { TarotReading } from '../types/reading';
-import { ArrowRight, ArrowLeft, RefreshCw, Hash, CheckCircle2, Loader2, Sparkles, ChevronRight, ShieldAlert, Plus, Zap, Columns, Layout, Heart, Briefcase, Calendar, Compass, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RefreshCw, Hash, CheckCircle2, Loader2, Sparkles, ChevronRight, ShieldAlert, Plus, Zap, Columns, Layout, Heart, Briefcase, Calendar, Compass, AlertCircle, TrendingUp } from 'lucide-react';
 
 type Step = 'setup' | 'shuffle' | 'select' | 'result';
+
+// Card suit styling based on card index in the deck
+function getCardSuitStyle(cardName: string) {
+  const suits: Record<string, { gradient: string; label: string; symbol: string }> = {
+    '权杖': { gradient: 'from-amber-900/25 to-[#0a0502]', label: 'Wands', symbol: '🔥' },
+    '圣杯': { gradient: 'from-blue-900/25 to-[#0a0502]', label: 'Cups', symbol: '💧' },
+    '宝剑': { gradient: 'from-slate-600/25 to-[#0a0502]', label: 'Swords', symbol: '⚔️' },
+    '星币': { gradient: 'from-emerald-900/25 to-[#0a0502]', label: 'Pentacles', symbol: '✨' },
+  };
+  for (const [key, style] of Object.entries(suits)) {
+    if (cardName.includes(key)) return style;
+  }
+  // Major Arcana
+  return { gradient: 'from-[#ff4e00]/15 to-[#0a0502]', label: 'Major Arcana', symbol: '🌟' };
+}
+
+function SectionDivider() {
+  return (
+    <div className="flex items-center gap-4 py-2">
+      <div className="flex-1 h-px bg-white/5" />
+      <Sparkles size={10} className="text-[#ff4e00]/30" />
+      <div className="flex-1 h-px bg-white/5" />
+    </div>
+  );
+}
 
 const SUGGESTED_QUESTIONS = [
   { category: "事业", questions: ["今年我的事业发展趋势如何？", "我是否应该接受这份新的工作机会？", "如何提升职场人际关系？"] },
@@ -295,83 +320,157 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
           </motion.div>
         )}
 
-        {step === 'result' && reading && session && (
-          <motion.div key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
-            <div className="text-center space-y-4">
-              <div className="inline-flex items-center gap-2 px-4 py-1 bg-[#ff4e00]/10 text-[#ff4e00] rounded-full text-xs uppercase tracking-widest border border-[#ff4e00]/20">
+        {step === 'result' && reading && session && (() => {
+          const cards = getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
+          const cardCount = cards.length;
+          const gridCols = cardCount <= 3 ? 'grid-cols-1 sm:grid-cols-3' : cardCount >= 8 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+          const animBase = 0.3;
+
+          return (
+          <motion.div key="result" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="space-y-0">
+
+            {/* === Section A: Title === */}
+            <div className="text-center space-y-4 mb-16">
+              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#ff4e00]/10 text-[#ff4e00] rounded-full text-xs uppercase tracking-widest border border-[#ff4e00]/20">
                 <CheckCircle2 size={14} /><span>占卜结论</span>
-              </div>
-              <h2 className="text-4xl font-serif leading-tight">{reading.summary}</h2>
+              </motion.div>
+              <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="text-3xl sm:text-4xl font-serif leading-tight">{reading.summary}</motion.h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers).map((card, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-4">
-                  <div className="text-xs text-gray-500 uppercase tracking-widest font-serif">位置 {i + 1}: {SPREADS[spreadType].positions[i]}</div>
-                  <div className="aspect-[2/3] bg-gradient-to-br from-gray-800 to-black rounded-xl flex flex-col items-center justify-center p-4 text-center border border-white/5 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 pointer-events-none">
-                      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] from-[#ff4e00]/20" />
-                    </div>
-                    <div className={`text-4xl mb-2 ${card.orientation === 'reversed' ? 'rotate-180' : ''}`}>🎴</div>
-                    <h4 className="text-xl font-serif">{card.name}</h4>
-                    <p className="text-xs text-gray-500 italic mt-1">{card.nameEn}</p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-1">
-                      {card.keywords.map(k => (<span key={k} className="text-[10px] px-2 py-0.5 bg-white/5 rounded-full text-gray-400">{k}</span>))}
-                    </div>
-                    <div className={`absolute bottom-4 right-4 text-[10px] uppercase tracking-widest ${card.orientation === 'upright' ? 'text-green-500' : 'text-red-500'}`}>
+            <SectionDivider />
+
+            {/* === Section B: Card Grid === */}
+            <div className={`grid ${gridCols} gap-6 sm:gap-8 mt-12 mb-16`}>
+              {cards.map((card, i) => {
+                const suit = getCardSuitStyle(card.name);
+                return (
+                <motion.div key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: animBase + i * 0.08 }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  className="p-6 rounded-3xl bg-white/[0.04] border border-white/[0.08] flex flex-col gap-5 group"
+                >
+                  {/* Row 1: Position + Orientation badge */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-gray-500 uppercase tracking-widest font-serif">
+                      {SPREADS[spreadType].positions[i]}
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full ${
+                      card.orientation === 'upright'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${card.orientation === 'upright' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                       {card.orientation === 'upright' ? '正位' : '逆位'}
-                    </div>
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-400 leading-relaxed italic">{reading.detailedInterpretations?.[i]?.meaning || "暂无解读"}</p>
+
+                  {/* Row 2: Card visual */}
+                  <div className={`h-40 sm:h-48 bg-gradient-to-br ${suit.gradient} rounded-2xl flex flex-col items-center justify-center text-center relative overflow-hidden border border-white/5 ${card.orientation === 'reversed' ? 'ring-1 ring-red-500/20' : 'ring-1 ring-white/[0.06]'}`}>
+                    <div className="absolute inset-3 border border-white/[0.06] rounded-xl pointer-events-none" />
+                    <div className="text-4xl mb-2 opacity-90">{suit.symbol}</div>
+                    <h4 className="text-xl font-serif relative z-10">{card.name}</h4>
+                    <p className="text-[11px] text-gray-500 tracking-wider mt-1">{card.nameEn}</p>
+                    <p className="text-[10px] text-gray-600 tracking-[0.3em] uppercase mt-2">{suit.label}</p>
+                  </div>
+
+                  {/* Row 3: Keywords */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {card.keywords.map(k => (<span key={k} className="text-[11px] px-2.5 py-1 bg-white/5 rounded-full text-gray-400">{k}</span>))}
+                  </div>
+
+                  {/* Row 4: Interpretation */}
+                  <p className="text-[15px] text-gray-300 leading-[1.85]">{reading.detailedInterpretations?.[i]?.meaning || "暂无解读"}</p>
                 </motion.div>
-              ))}
+                );
+              })}
             </div>
 
-            <div className="space-y-8">
-              <div className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-6 bg-[#ff4e00]" />
-                  <h3 className="text-2xl font-serif">整体趋势分析</h3>
-                </div>
-                <p className="text-gray-300 leading-relaxed text-lg font-light">{reading.overallTrend}</p>
-              </div>
+            <SectionDivider />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3">
-                  <h4 className="text-sm font-serif text-[#ff4e00] uppercase tracking-widest">行动建议</h4>
-                  <p className="text-gray-400 text-sm leading-relaxed">{reading.suggestions?.actionableSteps || "暂无建议"}</p>
+            {/* === Section C: Analysis & Suggestions === */}
+            <div className="space-y-10 mb-16">
+              {/* Overall Trend */}
+              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: animBase + cardCount * 0.08 + 0.2 }}
+                className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10">
+                <div className="flex items-center gap-3 mb-6">
+                  <TrendingUp size={18} className="text-[#ff4e00]/70" />
+                  <h3 className="text-xl sm:text-2xl font-serif">整体趋势分析</h3>
                 </div>
-                <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3">
-                  <h4 className="text-sm font-serif text-[#ff4e00] uppercase tracking-widest">心态调整</h4>
-                  <p className="text-gray-400 text-sm leading-relaxed">{reading.suggestions?.mindsetShift || "暂无建议"}</p>
-                </div>
-                <div className="p-6 rounded-3xl bg-white/5 border border-white/10 space-y-3">
-                  <h4 className="text-sm font-serif text-[#ff4e00] uppercase tracking-widest">潜在警示</h4>
-                  <p className="text-gray-400 text-sm leading-relaxed">{reading.suggestions?.warningSigns || "暂无警示"}</p>
-                </div>
-              </div>
+                <p className="text-gray-300 leading-[2] text-[15px] font-light">{reading.overallTrend}</p>
+              </motion.div>
 
-              <div className="p-8 rounded-3xl bg-[#ff4e00]/10 border border-[#ff4e00]/20 space-y-4">
-                <h3 className="text-xl font-serif text-[#ff4e00]">核心建议</h3>
-                <p className="text-white text-lg italic">"{reading.finalAdvice}"</p>
-              </div>
-
-              {supplementaryCards.length > 0 && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1 h-6 bg-blue-500" />
-                    <h3 className="text-2xl font-serif">补充建议</h3>
+              {/* Three Suggestion Columns */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: animBase + cardCount * 0.08 + 0.4 }}
+                  className="p-6 sm:p-7 rounded-3xl bg-white/[0.03] border border-white/[0.06] border-t-2 border-t-emerald-500/50 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <ArrowRight size={14} className="text-emerald-400" />
+                    <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-widest">行动建议</h4>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {supplementaryCards.map((sc, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-3xl bg-white/5 border border-white/10 flex gap-4">
-                        <div className={`text-3xl ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}>🎴</div>
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-serif text-white">{sc.name} ({sc.orientation === 'upright' ? '正位' : '逆位'})</h4>
-                          <p className="text-xs text-gray-400 italic">{sc.interpretation}</p>
+                  <p className="text-gray-300 text-[15px] leading-[1.9]">{reading.suggestions?.actionableSteps || "暂无建议"}</p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: animBase + cardCount * 0.08 + 0.5 }}
+                  className="p-6 sm:p-7 rounded-3xl bg-white/[0.03] border border-white/[0.06] border-t-2 border-t-blue-400/50 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw size={14} className="text-blue-400" />
+                    <h4 className="text-xs font-medium text-blue-400 uppercase tracking-widest">心态调整</h4>
+                  </div>
+                  <p className="text-gray-300 text-[15px] leading-[1.9]">{reading.suggestions?.mindsetShift || "暂无建议"}</p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: animBase + cardCount * 0.08 + 0.6 }}
+                  className="p-6 sm:p-7 rounded-3xl bg-white/[0.03] border border-white/[0.06] border-t-2 border-t-amber-400/50 flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={14} className="text-amber-400" />
+                    <h4 className="text-xs font-medium text-amber-400 uppercase tracking-widest">潜在警示</h4>
+                  </div>
+                  <p className="text-gray-300 text-[15px] leading-[1.9]">{reading.suggestions?.warningSigns || "暂无警示"}</p>
+                </motion.div>
+              </div>
+
+              {/* Core Advice */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: animBase + cardCount * 0.08 + 0.7 }}
+                className="p-8 sm:p-10 rounded-3xl bg-[#ff4e00]/10 border border-[#ff4e00]/20 shadow-lg shadow-[#ff4e00]/5 flex flex-col gap-5 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <Sparkles size={16} className="text-[#ff4e00]" />
+                  <h3 className="text-sm font-medium text-[#ff4e00] uppercase tracking-widest">核心建议</h3>
+                </div>
+                <p className="text-white text-xl sm:text-2xl font-serif font-light leading-[1.7]">
+                  {reading.finalAdvice}
+                </p>
+              </motion.div>
+            </div>
+
+            {/* === Section D: Supplementary + Actions === */}
+            <div className="space-y-6 pt-4">
+              {supplementaryCards.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-0.5 h-6 bg-gradient-to-b from-blue-500 to-blue-500/0" />
+                    <h3 className="text-xl font-serif">补充建议</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {supplementaryCards.map((sc, i) => {
+                      const scSuit = getCardSuitStyle(sc.name);
+                      return (
+                      <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                        className="p-5 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex gap-4">
+                        <div className="text-2xl shrink-0">{scSuit.symbol}</div>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-serif text-white">{sc.name}</h4>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${sc.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                              {sc.orientation === 'upright' ? '正位' : '逆位'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 leading-relaxed">{sc.interpretation}</p>
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -383,20 +482,23 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 </motion.div>
               )}
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 pb-4">
                 {!isStrictMode && (
-                  <button onClick={drawSupplementaryCard} disabled={loading} className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-medium hover:bg-white/10 transition-all flex items-center gap-2">
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={drawSupplementaryCard} disabled={loading}
+                    className="w-full sm:w-auto px-8 py-3 bg-white/5 border border-white/10 text-white rounded-full font-medium hover:bg-white/10 transition-all flex items-center justify-center gap-2">
                     {loading ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
                     <span>补抽一张牌</span>
-                  </button>
+                  </motion.button>
                 )}
-                <button onClick={onComplete} className="px-12 py-4 bg-[#ff4e00] text-white rounded-full font-medium hover:bg-[#e64600] transition-all flex items-center gap-2 shadow-xl shadow-[#ff4e00]/20">
+                <motion.button whileTap={{ scale: 0.97 }} onClick={onComplete}
+                  className="w-full sm:w-auto px-12 py-4 bg-[#ff4e00] text-white rounded-full font-medium hover:bg-[#e64600] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#ff4e00]/20">
                   <span>查看历史记录</span><ChevronRight size={18} />
-                </button>
+                </motion.button>
               </div>
             </div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
     </div>
   );

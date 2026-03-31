@@ -2,24 +2,27 @@ import React, { useState } from 'react';
 import TarotFlow from './components/TarotFlow';
 import History from './components/History';
 import ErrorBoundary from './components/ErrorBoundary';
-import { Sparkles, History as HistoryIcon, Info, LogOut } from 'lucide-react';
+import { Sparkles, History as HistoryIcon, Info, Settings2 } from 'lucide-react';
+import Settings from './components/Settings';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [view, setView] = useState<'home' | 'flow' | 'history'>('home');
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-[#0a0502] text-white font-sans selection:bg-[#ff4e00]/30">
         {/* Navigation */}
-        <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center backdrop-blur-md bg-black/20 border-b border-white/5">
+        <nav className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 flex justify-between items-center backdrop-blur-xl bg-[#0a0502]/80 border-b border-white/[0.04]">
           <div
-            className="text-2xl font-serif font-light cursor-pointer hover:text-[#ff4e00] transition-colors"
+            className="cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => setView('home')}
           >
-            Tarot Flow
+            <div className="text-lg font-serif font-light">灵签局</div>
+            <div className="text-[9px] tracking-[0.4em] text-gray-600 uppercase">Tarot Flow</div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button onClick={() => setView('flow')} aria-current={view === 'flow' ? 'page' : undefined} className={`flex items-center gap-2 text-sm uppercase tracking-widest ${view === 'flow' ? 'text-[#ff4e00]' : 'text-gray-400 hover:text-white'}`}>
               <Sparkles size={16} />
               <span className="hidden sm:inline">新占卜</span>
@@ -27,6 +30,10 @@ export default function App() {
             <button onClick={() => setView('history')} aria-current={view === 'history' ? 'page' : undefined} className={`flex items-center gap-2 text-sm uppercase tracking-widest ${view === 'history' ? 'text-[#ff4e00]' : 'text-gray-400 hover:text-white'}`}>
               <HistoryIcon size={16} />
               <span className="hidden sm:inline">历史</span>
+            </button>
+            <button onClick={() => setShowSettings(true)} className="flex items-center gap-2 text-sm uppercase tracking-widest text-gray-400 hover:text-white">
+              <Settings2 size={16} />
+              <span className="hidden sm:inline">设置</span>
             </button>
           </div>
         </nav>
@@ -42,8 +49,8 @@ export default function App() {
                 className="space-y-12"
               >
                 <div className="space-y-4">
-                  <h2 className="text-5xl font-serif font-light leading-tight">
-                    欢迎使用 Tarot Flow。<br />
+                  <h2 className="text-4xl sm:text-5xl font-serif font-light leading-tight">
+                    欢迎来到灵签局。<br />
                     <span className="text-gray-500 italic">今天想探寻什么？</span>
                   </h2>
                   <p className="text-gray-400 max-w-lg">先洗牌，再选数，再翻开答案。每一轮都固定，每一张都有位置。</p>
@@ -93,6 +100,7 @@ export default function App() {
           </AnimatePresence>
         </main>
       </div>
+      <Settings open={showSettings} onClose={() => setShowSettings(false)} />
     </ErrorBoundary>
   );
 }

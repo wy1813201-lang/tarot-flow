@@ -2,7 +2,7 @@ import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { TarotReading } from "../types/reading";
 
 // ===================== Provider Config =====================
-type AIProvider = 'gemini' | 'openai';
+type AIProvider = 'gemini' | 'openai' | 'minimax';
 
 interface AIConfig {
   provider: AIProvider;
@@ -12,14 +12,26 @@ interface AIConfig {
   modelLight: string;
 }
 
+function inferProvider(modelId: string): AIProvider {
+  if (modelId.startsWith('gemini')) return 'gemini';
+  if (modelId.startsWith('MiniMax') || modelId.startsWith('minimax')) return 'minimax';
+  return 'openai';
+}
+
 function getConfig(): AIConfig {
-  const provider = (import.meta.env.VITE_AI_PROVIDER || 'gemini') as AIProvider;
+  // User-selected model from Settings UI takes priority
+  let userModel: string | null = null;
+  try { userModel = localStorage.getItem('tarot_model'); } catch { /* SSR safe */ }
+
+  const envProvider = (import.meta.env.VITE_AI_PROVIDER || 'gemini') as AIProvider;
+  const provider: AIProvider = userModel ? inferProvider(userModel) : envProvider;
+
   const apiKey = import.meta.env.VITE_AI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY || 'proxy';
-  // On Vercel, OpenAI calls go through /api/proxy — no client-side key needed.
 
   const defaults: Record<AIProvider, { baseUrl: string; model: string; modelLight: string }> = {
     gemini: { baseUrl: '', model: 'gemini-2.5-pro-preview-05-06', modelLight: 'gemini-2.0-flash' },
     openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', modelLight: 'gpt-4o-mini' },
+    minimax: { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M2.5', modelLight: 'MiniMax-M2.5' },
   };
   const d = defaults[provider] || defaults.openai;
 
@@ -27,7 +39,7 @@ function getConfig(): AIConfig {
     provider,
     apiKey,
     baseUrl: import.meta.env.VITE_AI_BASE_URL || d.baseUrl,
-    model: import.meta.env.VITE_AI_MODEL || d.model,
+    model: userModel || import.meta.env.VITE_AI_MODEL || d.model,
     modelLight: import.meta.env.VITE_AI_MODEL_LIGHT || d.modelLight,
   };
 }
@@ -103,16 +115,21 @@ function getOpenAIEndpoint(cfg: AIConfig): { url: string; headers: Record<string
   return { url: '/api/proxy', headers: { 'Content-Type': 'application/json' } };
 }
 
+function getProviderHint(cfg: AIConfig): string {
+  return cfg.provider === 'minimax' ? 'minimax' : 'openai';
+}
+
 async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean): Promise<string> {
   const messages = [
     { role: 'system', content: '你是一位资深的塔罗占卜导师。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
     { role: 'user', content: prompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
+  const providerHint = getProviderHint(cfg);
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ model, messages, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) }),
+    body: JSON.stringify({ model, messages, provider: providerHint, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) }),
   });
   if (!res.ok) throw new Error(`AI 请求失败 (${res.status})`);
   const data = await res.json();
@@ -125,10 +142,11 @@ async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, js
     { role: 'user', content: prompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
+  const providerHint = getProviderHint(cfg);
   const res = await fetch(url, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ model, messages, stream: true, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) }),
+    body: JSON.stringify({ model, messages, stream: true, provider: providerHint, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) }),
   });
   if (!res.ok) throw new Error(`AI 请求失败 (${res.status})`);
 
@@ -204,7 +222,7 @@ export async function interpretTarot(input: TarotReadingInput): Promise<TarotRea
   const prompt = MAIN_PROMPT(input);
   const text = cfg.provider === 'gemini'
     ? await callGemini(cfg, cfg.model, prompt)
-    : await callOpenAI(cfg, cfg.model, prompt, true);
+    : await callOpenAI(cfg, cfg.model, prompt, true); // minimax uses OpenAI-compatible API
   return parseAIResponse(text);
 }
 
@@ -214,7 +232,7 @@ export async function interpretTarotStream(input: TarotReadingInput, onProgress:
   const prompt = MAIN_PROMPT(input);
   const text = cfg.provider === 'gemini'
     ? await callGeminiStream(cfg, cfg.model, prompt, onProgress)
-    : await callOpenAIStream(cfg, cfg.model, prompt, true, onProgress);
+    : await callOpenAIStream(cfg, cfg.model, prompt, true, onProgress); // minimax uses OpenAI-compatible API
   onProgress("解读完成");
   return parseAIResponse(text);
 }
@@ -226,7 +244,7 @@ export async function interpretSupplementary(input: {
   const prompt = SUPPLEMENTARY_PROMPT(input);
   const text = cfg.provider === 'gemini'
     ? await callGeminiLight(cfg, cfg.modelLight, prompt)
-    : await callOpenAI(cfg, cfg.modelLight, prompt, false);
+    : await callOpenAI(cfg, cfg.modelLight, prompt, false); // minimax uses OpenAI-compatible API
   return { summary: text || "暂无补充建议" };
 }
 
