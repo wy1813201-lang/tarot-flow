@@ -61,7 +61,7 @@ export default function History() {
               <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
                   <Calendar size={11} />
-                  {new Date(session.createdAt).toLocaleDateString('zh-CN')}
+                  {new Date(session.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <span>{SPREADS[session.spreadType as keyof typeof SPREADS]?.name || session.spreadType}</span>
                 {session.isStrictMode && <span className="text-[#ff4e00]">严格模式</span>}

@@ -116,7 +116,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         positions
       }, setProgressStage);
 
-      const finalSession = { ...session, chosenNumbers, reading: result };
+      const finalSession = { ...session, chosenNumbers, reading: result, createdAt: new Date().toISOString() };
 
       try {
         const existing = JSON.parse(localStorage.getItem('tarot_sessions') || '[]');
@@ -341,22 +341,21 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
 
             <SectionDivider />
 
-            {/* === Section B: Card Grid === */}
-            <div className={`grid ${gridCols} gap-6 sm:gap-8 mt-12 mb-16`}>
+            {/* === Section B: Card Flow (竖排：牌面 + 解读) === */}
+            <div className="mt-12 mb-16 space-y-6">
               {cards.map((card, i) => {
                 const suit = getCardSuitStyle(card.name);
                 return (
                 <motion.div key={i}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 24 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: animBase + i * 0.08 }}
-                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  className="p-6 rounded-3xl bg-white/[0.04] border border-white/[0.08] flex flex-col gap-5 group"
+                  transition={{ delay: animBase + i * 0.1 }}
+                  className="rounded-3xl bg-white/[0.04] border border-white/[0.07] overflow-hidden"
                 >
-                  {/* Row 1: Position + Orientation badge */}
-                  <div className="flex items-center justify-between">
+                  {/* Card Header: position + orientation */}
+                  <div className="flex items-center justify-between px-6 pt-5 pb-3">
                     <span className="text-[11px] text-gray-500 uppercase tracking-widest font-serif">
-                      {SPREADS[spreadType].positions[i]}
+                      第 {i + 1} 张 · {SPREADS[spreadType].positions[i]}
                     </span>
                     <span className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full ${
                       card.orientation === 'upright'
@@ -368,22 +367,32 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                     </span>
                   </div>
 
-                  {/* Row 2: Card visual */}
-                  <div className={`h-40 sm:h-48 bg-gradient-to-br ${suit.gradient} rounded-2xl flex flex-col items-center justify-center text-center relative overflow-hidden border border-white/5 ${card.orientation === 'reversed' ? 'ring-1 ring-red-500/20' : 'ring-1 ring-white/[0.06]'}`}>
-                    <div className="absolute inset-3 border border-white/[0.06] rounded-xl pointer-events-none" />
-                    <div className="text-4xl mb-2 opacity-90">{suit.symbol}</div>
-                    <h4 className="text-xl font-serif relative z-10">{card.name}</h4>
-                    <p className="text-[11px] text-gray-500 tracking-wider mt-1">{card.nameEn}</p>
-                    <p className="text-[10px] text-gray-600 tracking-[0.3em] uppercase mt-2">{suit.label}</p>
-                  </div>
+                  {/* Card Body: visual left + info right */}
+                  <div className="flex gap-5 px-6 pb-5 items-start">
+                    {/* Left: card thumbnail */}
+                    <div className={`w-24 sm:w-28 shrink-0 aspect-[2/3] bg-gradient-to-br ${suit.gradient} rounded-xl flex flex-col items-center justify-center text-center relative overflow-hidden border border-white/[0.06] ${card.orientation === 'reversed' ? 'ring-1 ring-red-500/20' : ''}`}>
+                      <div className="absolute inset-1.5 border border-white/[0.05] rounded-lg pointer-events-none" />
+                      <div className={`text-2xl sm:text-3xl mb-1 opacity-90 ${card.orientation === 'reversed' ? 'rotate-180' : ''}`}>{suit.symbol}</div>
+                      <p className="text-[9px] sm:text-[10px] text-gray-600 tracking-[0.2em] uppercase">{suit.label}</p>
+                    </div>
 
-                  {/* Row 3: Keywords */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {card.keywords.map(k => (<span key={k} className="text-[11px] px-2.5 py-1 bg-white/5 rounded-full text-gray-400">{k}</span>))}
+                    {/* Right: card info + interpretation */}
+                    <div className="flex-1 min-w-0 flex flex-col gap-3 pt-1">
+                      <div>
+                        <h4 className="text-lg sm:text-xl font-serif">{card.name}</h4>
+                        <p className="text-[11px] text-gray-500 tracking-wider mt-0.5">{card.nameEn}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {card.keywords.map(k => (
+                          <span key={k} className="text-[11px] px-2.5 py-0.5 bg-white/[0.06] rounded-full text-gray-400">{k}</span>
+                        ))}
+                      </div>
+                      <div className="w-10 h-px bg-[#ff4e00]/20" />
+                      <p className="text-[15px] text-gray-300 leading-[1.9]">
+                        {reading.detailedInterpretations?.[i]?.meaning || "暂无解读"}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Row 4: Interpretation */}
-                  <p className="text-[15px] text-gray-300 leading-[1.85]">{reading.detailedInterpretations?.[i]?.meaning || "暂无解读"}</p>
                 </motion.div>
                 );
               })}
