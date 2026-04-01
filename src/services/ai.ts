@@ -52,21 +52,19 @@ export interface TarotReadingInput {
   positions: { name: string; card: string; orientation: string; keywords: string[] }[];
 }
 
-const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位资深的塔罗占卜导师。请根据以下信息进行极其详尽、专业的深度解读：
+const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位资深的塔罗占卜导师。请根据以下信息进行专业深度解读：
 问题：${input.question}
 牌阵：${input.spreadType}
-${input.isStrictMode ? "【严格模式】：本次占卜结果具有唯一性，请给出最权威、最不容置疑的深度剖析。" : ""}
+${input.isStrictMode ? "【严格模式】：给出最权威、最确定的深度剖析，结论不容置疑。" : ""}
 
 牌面详情：
 ${input.positions.map((p, i) => `位置 ${i + 1} (${p.name}): ${p.card} (${p.orientation === 'upright' ? '正位' : '逆位'}) - 关键词: ${p.keywords.join(', ')}`).join('\n')}
 
-解读要求（请务必严格执行）：
-1. 提供一份内容详实、洞察深刻、逻辑严密的塔罗深度分析报告，总字数不少于500字。
-2. 紧密结合每张牌的关键词，详细推演其在特定位置上的深远影响。
-3. 深入挖掘心理映射、现实显化、动态关联分析。
-4. 严禁使用"可能""也许""大概"等模糊词汇。
-5. 提供至少3条具体行动建议、心态转变建议、危机预警。
-6. 在报告结尾提炼出一个最关键的行动指南。`;
+解读要求：
+1. 结合每张牌的关键词，分析其在特定位置的含义与影响。
+2. 禁止使用"可能""也许""大概"等模糊词汇，给出确定性判断。
+3. 提供具体行动建议、心态调整方向、需警惕的风险。
+4. 提炼一句最核心的行动指南作为结尾。`;
 
 const JSON_FORMAT_INSTRUCTION = `
 请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记）：
@@ -120,34 +118,34 @@ function getProviderHint(cfg: AIConfig): string {
 }
 
 async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean): Promise<string> {
+  const isMinimax = cfg.provider === 'minimax';
   const messages = [
     { role: 'system', content: '你是一位资深的塔罗占卜导师。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
     { role: 'user', content: prompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
   const providerHint = getProviderHint(cfg);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ model, messages, provider: providerHint, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) }),
-  });
+  // MiniMax does not support response_format: json_object
+  const body: Record<string, unknown> = { model, messages, provider: providerHint };
+  if (jsonMode && !isMinimax) body.response_format = { type: 'json_object' };
+  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`AI 请求失败 (${res.status})`);
   const data = await res.json();
   return data.choices?.[0]?.message?.content || '';
 }
 
 async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean, onProgress: (s: string) => void): Promise<string> {
+  const isMinimax = cfg.provider === 'minimax';
   const messages = [
     { role: 'system', content: '你是一位资深的塔罗占卜导师。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
     { role: 'user', content: prompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
   const providerHint = getProviderHint(cfg);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ model, messages, stream: true, provider: providerHint, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) }),
-  });
+  // MiniMax does not support response_format: json_object
+  const body: Record<string, unknown> = { model, messages, stream: true, provider: providerHint };
+  if (jsonMode && !isMinimax) body.response_format = { type: 'json_object' };
+  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`AI 请求失败 (${res.status})`);
 
   const reader = res.body!.getReader();
@@ -182,11 +180,19 @@ function getGeminiClient(apiKey: string) {
   return new GoogleGenAI({ apiKey });
 }
 
+// Only "pro" models benefit from thinking; flash models skip it for speed
+function geminiThinkingConfig(model: string) {
+  const isPro = model.includes('pro') || model.includes('2.5');
+  return isPro
+    ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
+    : { thinkingConfig: { thinkingLevel: ThinkingLevel.NONE } };
+}
+
 async function callGemini(cfg: AIConfig, model: string, prompt: string): Promise<string> {
   const ai = getGeminiClient(cfg.apiKey);
   const response = await ai.models.generateContent({
     model, contents: prompt,
-    config: { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }, responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA }
+    config: { ...geminiThinkingConfig(model), responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA }
   });
   if (!response.text) throw new Error("AI 返回内容为空，请重试。");
   return response.text;
@@ -196,7 +202,7 @@ async function callGeminiStream(cfg: AIConfig, model: string, prompt: string, on
   const ai = getGeminiClient(cfg.apiKey);
   const response = await ai.models.generateContentStream({
     model, contents: prompt,
-    config: { thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH }, responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA }
+    config: { ...geminiThinkingConfig(model), responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA }
   });
   let accumulated = '';
   for await (const chunk of response) {

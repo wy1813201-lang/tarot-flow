@@ -61,6 +61,14 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [progressStage, setProgressStage] = useState('');
   const [supplementaryCards, setSupplementaryCards] = useState<SupplementaryCard[]>([]);
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  // Timer: counts up while loading
+  React.useEffect(() => {
+    if (!loading) { setElapsedSec(0); return; }
+    const t = setInterval(() => setElapsedSec(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [loading]);
 
   const startShuffle = async () => {
     if (!question.trim()) return;
@@ -307,14 +315,25 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
             </div>
 
             {loading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-6" role="alert" aria-live="assertive">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center gap-5" role="alert" aria-live="assertive">
+                {/* Rotating icon */}
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }}>
-                  <Sparkles size={48} className="text-[#ff4e00]" />
+                  <Sparkles size={44} className="text-[#ff4e00]" />
                 </motion.div>
-                <motion.p key={progressStage} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-serif text-gray-300 italic">
+                {/* Stage text */}
+                <motion.p key={progressStage} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-serif text-gray-200 italic">
                   {progressStage || '正在连接灵感...'}
                 </motion.p>
-                <p className="text-xs text-gray-500">深度解读需要一些时间，请耐心等待</p>
+                {/* Elapsed timer */}
+                <p className="text-xs text-gray-500 tabular-nums">已等待 {elapsedSec}s</p>
+                {/* Pulse progress bar */}
+                <div className="w-40 h-0.5 bg-white/10 rounded-full overflow-hidden">
+                  <motion.div className="h-full bg-[#ff4e00]/60 rounded-full"
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+                    style={{ width: '60%' }}
+                  />
+                </div>
               </motion.div>
             )}
           </motion.div>
@@ -330,11 +349,16 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
           <motion.div key="result" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="space-y-0">
 
             {/* === Section A: Title === */}
-            <div className="text-center space-y-4 mb-16">
+            <div className="text-center space-y-5 mb-14">
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
                 className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#ff4e00]/10 text-[#ff4e00] rounded-full text-xs uppercase tracking-widest border border-[#ff4e00]/20">
                 <CheckCircle2 size={14} /><span>占卜结论</span>
               </motion.div>
+              {/* Question echo */}
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+                className="text-sm text-gray-500 italic">
+                「{session.question}」
+              </motion.p>
               <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                 className="text-3xl sm:text-4xl font-serif leading-tight">{reading.summary}</motion.h2>
             </div>
