@@ -52,20 +52,19 @@ export interface TarotReadingInput {
   positions: { name: string; card: string; orientation: string; keywords: string[] }[];
 }
 
-const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位塔罗占卜师。根据以下信息进行解读：
+const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位资深的塔罗占卜导师。请根据以下信息进行专业深度解读：
 问题：${input.question}
 牌阵：${input.spreadType}
-${input.isStrictMode ? "【严格模式】：给出最确定的判断，避免模糊词汇。" : ""}
+${input.isStrictMode ? "【严格模式】：给出最权威、最确定的深度剖析，结论不容置疑。" : ""}
 
-牌面：
-${input.positions.map((p, i) => `${i + 1}. ${p.name}: ${p.card}(${p.orientation === 'upright' ? '正' : '逆'})`).join(' | ')}
+牌面详情：
+${input.positions.map((p, i) => `位置 ${i + 1} (${p.name}): ${p.card} (${p.orientation === 'upright' ? '正位' : '逆位'}) - 关键词: ${p.keywords.join(', ')}`).join('\n')}
 
-要求：
-1. 每张牌的解读控制在2-3句话，简洁有力
-2. 避免"可能""也许"等模糊词汇
-3. 整体趋势分析1-2句
-4. 行动建议、心态调整、风险警示各1句
-5. 核心建议1句`;
+解读要求：
+1. 结合每张牌的关键词，分析其在特定位置的含义与影响。
+2. 禁止使用"可能""也许""大概"等模糊词汇，给出确定性判断。
+3. 提供具体行动建议、心态调整方向、需警惕的风险。
+4. 提炼一句最核心的行动指南作为结尾。`;
 
 const JSON_FORMAT_INSTRUCTION = `
 请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记）：

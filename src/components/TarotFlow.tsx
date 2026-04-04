@@ -282,13 +282,50 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
           const cardCount = cards.length;
 
           return (
-            <motion.div key="flip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-gradient-to-b from-[#FAF7F2] to-[#F3EEE6] flex flex-col items-center justify-center gap-8 p-6">
-              <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2">
-                <h2 className="text-4xl font-serif">翻牌时刻</h2>
+            <motion.div key="flip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-gradient-to-b from-[#FAF7F2] via-[#F3EEE6] to-[#E7D7B0] flex flex-col items-center justify-center gap-8 p-6 overflow-hidden">
+              {/* Background shimmer effect */}
+              <div className="absolute inset-0 opacity-30">
+                <motion.div
+                  animate={{ opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ repeat: Infinity, duration: 3 }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-[#C9A86A]/20 to-transparent"
+                />
+              </div>
+
+              {/* Floating particles */}
+              {Array.from({ length: 8 }).map((_, i) => (
+                <motion.div
+                  key={`particle-${i}`}
+                  className="absolute w-1 h-1 bg-[#C9A86A]/40 rounded-full"
+                  animate={{
+                    y: [0, -300],
+                    x: Math.sin(i) * 100,
+                    opacity: [1, 0],
+                  }}
+                  transition={{
+                    duration: 3 + i * 0.3,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                  }}
+                  style={{
+                    left: `${20 + i * 10}%`,
+                    bottom: 0,
+                  }}
+                />
+              ))}
+
+              <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2 relative z-10">
+                <motion.h2
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="text-5xl font-serif bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0] bg-clip-text text-transparent"
+                >
+                  翻牌时刻
+                </motion.h2>
                 <p className="text-[#5C5349]/70">见证命运的揭示</p>
               </motion.div>
 
-              <div className="flex gap-4 flex-wrap justify-center max-w-2xl">
+              <div className="flex gap-6 flex-wrap justify-center max-w-3xl relative z-10">
                 {cards.map((card, idx) => {
                   const suit = getCardSuitStyle(card.name);
                   const isFlipped = idx < cardIndex;
@@ -297,45 +334,66 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                   return (
                     <motion.div
                       key={idx}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.1 }}
-                      style={{ perspective: '1000px' }}
-                      className="cursor-pointer"
+                      initial={{ opacity: 0, scale: 0.5, rotateY: -90 }}
+                      animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+                      transition={{ delay: idx * 0.12, duration: 0.6 }}
+                      style={{ perspective: '1200px' }}
+                      className="cursor-pointer relative"
                       onClick={() => {
                         if (idx === cardIndex && !isFlipped) {
                           setCardIndex(idx + 1);
                         }
                       }}
                     >
+                      {/* Glow effect for current card */}
+                      {isFlipping && (
+                        <motion.div
+                          className="absolute inset-0 rounded-xl bg-[#C9A86A]/30 blur-xl"
+                          animate={{ scale: [1, 1.3, 1] }}
+                          transition={{ repeat: Infinity, duration: 1.5 }}
+                          style={{ width: '140px', height: '210px', margin: '-10px' }}
+                        />
+                      )}
+
                       <motion.div
                         style={{
                           transformStyle: 'preserve-3d',
-                          width: '120px',
-                          height: '180px',
+                          width: '140px',
+                          height: '210px',
                           position: 'relative',
                         }}
-                        animate={{ rotateY: isFlipped ? 180 : 0 }}
-                        transition={{ duration: isFlipping ? 0.6 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+                        animate={{
+                          rotateY: isFlipped ? 180 : 0,
+                          scale: isFlipping ? 1.1 : 1,
+                        }}
+                        transition={{
+                          duration: isFlipping ? 0.7 : 0.3,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
                       >
                         {/* Back */}
                         <div
-                          className="absolute inset-0 rounded-xl bg-[#F3EEE6] border border-[#E8E0D2] flex items-center justify-center"
+                          className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#F3EEE6] to-[#E8E0D2] border-2 border-[#C9A86A]/40 flex items-center justify-center shadow-2xl"
                           style={{ backfaceVisibility: 'hidden' }}
                         >
-                          <div className="absolute inset-2 border border-[#E8E0D2]/60 rounded-lg pointer-events-none" />
-                          <Sparkles size={20} className="text-[#C9A86A]/40" />
+                          <div className="absolute inset-2 border border-[#C9A86A]/30 rounded-lg pointer-events-none" />
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 4 }}
+                          >
+                            <Sparkles size={32} className="text-[#C9A86A]/60" />
+                          </motion.div>
                         </div>
 
                         {/* Front */}
                         <div
-                          className={`absolute inset-0 rounded-xl bg-gradient-to-br ${suit.gradient} border border-[#E8E0D2] flex flex-col items-center justify-center`}
+                          className={`absolute inset-0 rounded-xl bg-gradient-to-br ${suit.gradient} border-2 border-[#E8E0D2] flex flex-col items-center justify-center shadow-2xl`}
                           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
                         >
-                          <div className={`text-3xl ${card.orientation === 'reversed' ? 'rotate-180' : ''}`}>
+                          <div className={`text-4xl ${card.orientation === 'reversed' ? 'rotate-180' : ''}`}>
                             {suit.symbol}
                           </div>
-                          <p className="text-[8px] text-[#5C5349] tracking-widest uppercase mt-1">{suit.label}</p>
+                          <p className="text-[9px] text-[#5C5349] tracking-widest uppercase mt-2 font-serif">{suit.label}</p>
                         </div>
                       </motion.div>
                     </motion.div>
@@ -343,20 +401,37 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 })}
               </div>
 
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center space-y-3">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center space-y-4 relative z-10">
                 {cardIndex < cardCount ? (
                   <>
-                    <p className="text-sm text-[#5C5349]/70">点击卡片继续翻牌</p>
-                    <p className="text-xs text-[#5C5349]/50 font-mono">{cardIndex} / {cardCount}</p>
+                    <motion.p
+                      animate={{ opacity: [0.6, 1, 0.6] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                      className="text-sm text-[#5C5349]/80 font-medium"
+                    >
+                      点击卡片继续翻牌
+                    </motion.p>
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="w-32 h-1 bg-[#E8E0D2] rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0]"
+                          animate={{ width: `${(cardIndex / cardCount) * 100}%` }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </div>
+                      <p className="text-xs text-[#5C5349]/60 font-mono w-12 text-right">{cardIndex}/{cardCount}</p>
+                    </div>
                   </>
                 ) : (
                   <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setStep('result')}
-                    className="px-12 py-4 bg-[#C9A86A] text-white rounded-full font-medium hover:bg-[#B8944F] transition-all"
+                    className="px-12 py-4 bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0] text-white rounded-full font-medium shadow-lg shadow-[#C9A86A]/30 hover:shadow-xl hover:shadow-[#C9A86A]/40 transition-all"
                   >
-                    查看解读
+                    查看完整解读
                   </motion.button>
                 )}
               </motion.div>
