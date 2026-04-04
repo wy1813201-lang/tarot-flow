@@ -280,161 +280,238 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         {step === 'flip' && reading && session && (() => {
           const cards = getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
           const cardCount = cards.length;
+          const current = cards[cardIndex];
+          const allDone = cardIndex >= cardCount;
 
           return (
-            <motion.div key="flip" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-gradient-to-b from-[#FAF7F2] via-[#F3EEE6] to-[#E7D7B0] flex flex-col items-center justify-center gap-8 p-6 overflow-hidden">
-              {/* Background shimmer effect */}
-              <div className="absolute inset-0 opacity-30">
+            <motion.div
+              key="flip"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
+              style={{ background: 'radial-gradient(ellipse at center, #1a1410 0%, #0d0a07 100%)' }}
+            >
+              {/* Stars background */}
+              {Array.from({ length: 40 }).map((_, i) => (
                 <motion.div
-                  animate={{ opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ repeat: Infinity, duration: 3 }}
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-[#C9A86A]/20 to-transparent"
-                />
-              </div>
-
-              {/* Floating particles */}
-              {Array.from({ length: 8 }).map((_, i) => (
-                <motion.div
-                  key={`particle-${i}`}
-                  className="absolute w-1 h-1 bg-[#C9A86A]/40 rounded-full"
-                  animate={{
-                    y: [0, -300],
-                    x: Math.sin(i) * 100,
-                    opacity: [1, 0],
-                  }}
-                  transition={{
-                    duration: 3 + i * 0.3,
-                    repeat: Infinity,
-                    delay: i * 0.2,
-                  }}
+                  key={i}
+                  className="absolute rounded-full bg-white"
                   style={{
-                    left: `${20 + i * 10}%`,
-                    bottom: 0,
+                    width: Math.random() * 2 + 1,
+                    height: Math.random() * 2 + 1,
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
                   }}
+                  animate={{ opacity: [0.1, 0.8, 0.1] }}
+                  transition={{ duration: 2 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 2 }}
                 />
               ))}
 
-              <motion.div initial={{ opacity: 0, y: -30 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2 relative z-10">
-                <motion.h2
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="text-5xl font-serif bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0] bg-clip-text text-transparent"
-                >
-                  翻牌时刻
-                </motion.h2>
-                <p className="text-[#5C5349]/70">见证命运的揭示</p>
-              </motion.div>
+              {/* Gold dust particles */}
+              {Array.from({ length: 12 }).map((_, i) => (
+                <motion.div
+                  key={`dust-${i}`}
+                  className="absolute w-0.5 h-0.5 bg-[#C9A86A] rounded-full"
+                  animate={{ y: [0, -window.innerHeight], opacity: [0, 1, 0] }}
+                  transition={{ duration: 4 + i * 0.4, repeat: Infinity, delay: i * 0.3 }}
+                  style={{ left: `${10 + i * 7}%`, bottom: 0 }}
+                />
+              ))}
 
-              <div className="flex gap-6 flex-wrap justify-center max-w-3xl relative z-10">
-                {cards.map((card, idx) => {
-                  const suit = getCardSuitStyle(card.name);
-                  const isFlipped = idx < cardIndex;
-                  const isFlipping = idx === cardIndex;
-
-                  return (
+              <AnimatePresence mode="wait">
+                {!allDone ? (
+                  <motion.div
+                    key={`card-flip-${cardIndex}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.4 }}
+                    className="flex flex-col items-center gap-8 relative z-10 px-6 w-full max-w-sm"
+                  >
+                    {/* Position label */}
                     <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, scale: 0.5, rotateY: -90 }}
-                      animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                      transition={{ delay: idx * 0.12, duration: 0.6 }}
-                      style={{ perspective: '1200px' }}
-                      className="cursor-pointer relative"
-                      onClick={() => {
-                        if (idx === cardIndex && !isFlipped) {
-                          setCardIndex(idx + 1);
-                        }
-                      }}
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-center space-y-1"
                     >
-                      {/* Glow effect for current card */}
-                      {isFlipping && (
-                        <motion.div
-                          className="absolute inset-0 rounded-xl bg-[#C9A86A]/30 blur-xl"
-                          animate={{ scale: [1, 1.3, 1] }}
-                          transition={{ repeat: Infinity, duration: 1.5 }}
-                          style={{ width: '140px', height: '210px', margin: '-10px' }}
-                        />
-                      )}
+                      <p className="text-[10px] tracking-[0.4em] text-[#C9A86A]/60 uppercase font-mono">
+                        {cardIndex + 1} / {cardCount}
+                      </p>
+                      <p className="text-sm tracking-[0.2em] text-[#E7D7B0]/80 font-serif">
+                        {SPREADS[spreadType].positions[cardIndex]}
+                      </p>
+                    </motion.div>
 
+                    {/* The card — full flip reveal */}
+                    <div style={{ perspective: '1400px' }}>
                       <motion.div
-                        style={{
-                          transformStyle: 'preserve-3d',
-                          width: '140px',
-                          height: '210px',
-                          position: 'relative',
-                        }}
-                        animate={{
-                          rotateY: isFlipped ? 180 : 0,
-                          scale: isFlipping ? 1.1 : 1,
-                        }}
-                        transition={{
-                          duration: isFlipping ? 0.7 : 0.3,
-                          ease: [0.22, 1, 0.36, 1],
-                        }}
+                        style={{ transformStyle: 'preserve-3d', width: '220px', height: '380px', position: 'relative', cursor: cardFlipped ? 'default' : 'pointer' }}
+                        animate={{ rotateY: cardFlipped ? 180 : 0 }}
+                        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                        onClick={() => !cardFlipped && setCardFlipped(true)}
                       >
-                        {/* Back */}
+                        {/* Card back — ornate */}
                         <div
-                          className="absolute inset-0 rounded-xl bg-gradient-to-br from-[#F3EEE6] to-[#E8E0D2] border-2 border-[#C9A86A]/40 flex items-center justify-center shadow-2xl"
-                          style={{ backfaceVisibility: 'hidden' }}
+                          className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center select-none overflow-hidden"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            background: 'linear-gradient(135deg, #1c1408 0%, #2d1f0a 50%, #1c1408 100%)',
+                            border: '2px solid rgba(201,168,106,0.5)',
+                            boxShadow: '0 0 60px rgba(201,168,106,0.2), 0 30px 60px rgba(0,0,0,0.8)',
+                          }}
                         >
-                          <div className="absolute inset-2 border border-[#C9A86A]/30 rounded-lg pointer-events-none" />
+                          {/* Ornate border pattern */}
+                          <div className="absolute inset-3 rounded-xl" style={{ border: '1px solid rgba(201,168,106,0.3)' }} />
+                          <div className="absolute inset-5 rounded-lg" style={{ border: '1px solid rgba(201,168,106,0.15)' }} />
+
+                          {/* Fog layers */}
+                          <motion.div
+                            className="absolute inset-0 rounded-2xl"
+                            animate={{ opacity: [0.4, 0.7, 0.4] }}
+                            transition={{ repeat: Infinity, duration: 3 }}
+                            style={{ background: 'radial-gradient(ellipse at center, rgba(201,168,106,0.08) 0%, transparent 70%)' }}
+                          />
+
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 4 }}
-                          >
-                            <Sparkles size={32} className="text-[#C9A86A]/60" />
-                          </motion.div>
+                            transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
+                            className="absolute inset-0 rounded-2xl"
+                            style={{ background: 'conic-gradient(from 0deg, transparent, rgba(201,168,106,0.05), transparent, rgba(201,168,106,0.05), transparent)' }}
+                          />
+
+                          {/* Center emblem */}
+                          <div className="relative flex flex-col items-center gap-4">
+                            <motion.div
+                              animate={{ scale: [0.9, 1.1, 0.9], opacity: [0.5, 1, 0.5] }}
+                              transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+                            >
+                              <Sparkles size={40} className="text-[#C9A86A]" />
+                            </motion.div>
+                            <motion.p
+                              animate={{ opacity: [0.4, 0.9, 0.4] }}
+                              transition={{ repeat: Infinity, duration: 2 }}
+                              className="text-[11px] tracking-[0.5em] text-[#C9A86A]/70 uppercase font-serif"
+                            >
+                              点击揭晓
+                            </motion.p>
+                          </div>
                         </div>
 
-                        {/* Front */}
+                        {/* Card front — real Rider-Waite image */}
                         <div
-                          className={`absolute inset-0 rounded-xl bg-gradient-to-br ${suit.gradient} border-2 border-[#E8E0D2] flex flex-col items-center justify-center shadow-2xl`}
-                          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                          className="absolute inset-0 rounded-2xl overflow-hidden select-none"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)',
+                            boxShadow: '0 0 80px rgba(201,168,106,0.4), 0 40px 80px rgba(0,0,0,0.8)',
+                          }}
                         >
-                          <div className={`text-4xl ${card.orientation === 'reversed' ? 'rotate-180' : ''}`}>
-                            {suit.symbol}
-                          </div>
-                          <p className="text-[9px] text-[#5C5349] tracking-widest uppercase mt-2 font-serif">{suit.label}</p>
+                          <img
+                            src={current.imageUrl}
+                            alt={current.name}
+                            className="w-full h-full object-cover"
+                            style={{
+                              transform: current.orientation === 'reversed' ? 'rotate(180deg)' : 'none',
+                            }}
+                            draggable={false}
+                          />
+                          {/* Golden overlay frame */}
+                          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ border: '2px solid rgba(201,168,106,0.6)', boxShadow: 'inset 0 0 30px rgba(201,168,106,0.1)' }} />
                         </div>
                       </motion.div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center space-y-4 relative z-10">
-                {cardIndex < cardCount ? (
-                  <>
-                    <motion.p
-                      animate={{ opacity: [0.6, 1, 0.6] }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                      className="text-sm text-[#5C5349]/80 font-medium"
-                    >
-                      点击卡片继续翻牌
-                    </motion.p>
-                    <div className="flex items-center justify-center gap-3">
-                      <div className="w-32 h-1 bg-[#E8E0D2] rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0]"
-                          animate={{ width: `${(cardIndex / cardCount) * 100}%` }}
-                          transition={{ duration: 0.5 }}
-                        />
-                      </div>
-                      <p className="text-xs text-[#5C5349]/60 font-mono w-12 text-right">{cardIndex}/{cardCount}</p>
                     </div>
-                  </>
+
+                    {/* Card info — appears after flip */}
+                    <AnimatePresence>
+                      {cardFlipped && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 30 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ delay: 0.5, duration: 0.6 }}
+                          className="text-center space-y-4 w-full"
+                        >
+                          <div className="space-y-1">
+                            <h3 className="text-2xl font-serif text-[#E7D7B0]">{current.name}</h3>
+                            <p className="text-[11px] tracking-[0.3em] text-[#C9A86A]/60 uppercase">{current.nameEn}</p>
+                            <span className={`inline-block mt-1 text-[10px] px-3 py-1 rounded-full border ${
+                              current.orientation === 'upright'
+                                ? 'border-emerald-500/40 text-emerald-400/80 bg-emerald-500/5'
+                                : 'border-red-500/40 text-red-400/80 bg-red-500/5'
+                            }`}>
+                              {current.orientation === 'upright' ? '正位' : '逆位'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {current.keywords.map(k => (
+                              <span key={k} className="text-[11px] px-3 py-1 rounded-full text-[#C9A86A]/70 border border-[#C9A86A]/20 bg-[#C9A86A]/5">
+                                {k}
+                              </span>
+                            ))}
+                          </div>
+                          <motion.button
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => {
+                              if (cardIndex < cardCount - 1) {
+                                setCardIndex(i => i + 1);
+                                setCardFlipped(false);
+                              } else {
+                                setCardIndex(cardCount);
+                              }
+                            }}
+                            className="w-full py-3.5 rounded-full font-medium text-sm transition-all"
+                            style={{ background: 'linear-gradient(135deg, #C9A86A, #E7D7B0)', color: '#1a1410', boxShadow: '0 8px 32px rgba(201,168,106,0.3)' }}
+                          >
+                            {cardIndex < cardCount - 1 ? `下一张 →` : '查看完整解读'}
+                          </motion.button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                 ) : (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
+                  /* All cards revealed */
+                  <motion.div
+                    key="all-done"
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setStep('result')}
-                    className="px-12 py-4 bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0] text-white rounded-full font-medium shadow-lg shadow-[#C9A86A]/30 hover:shadow-xl hover:shadow-[#C9A86A]/40 transition-all"
+                    className="flex flex-col items-center gap-8 relative z-10 px-6 text-center"
                   >
-                    查看完整解读
-                  </motion.button>
+                    <motion.div
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      <Sparkles size={48} className="text-[#C9A86A]" />
+                    </motion.div>
+                    <div className="space-y-2">
+                      <h2 className="text-3xl font-serif text-[#E7D7B0]">牌面已全部揭晓</h2>
+                      <p className="text-[#C9A86A]/60 text-sm">命运的信息已经显现</p>
+                    </div>
+                    {/* Mini card row recap */}
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {cards.map((c, i) => (
+                        <div key={i} className="relative w-10 h-16 rounded-lg overflow-hidden" style={{ border: '1px solid rgba(201,168,106,0.4)' }}>
+                          <img
+                            src={c.imageUrl}
+                            alt={c.name}
+                            className="w-full h-full object-cover"
+                            style={{ transform: c.orientation === 'reversed' ? 'rotate(180deg)' : 'none' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => setStep('result')}
+                      className="px-12 py-4 rounded-full font-medium text-[#1a1410] shadow-2xl"
+                      style={{ background: 'linear-gradient(135deg, #C9A86A, #E7D7B0)', boxShadow: '0 0 40px rgba(201,168,106,0.4)' }}
+                    >
+                      查看完整解读
+                    </motion.button>
+                  </motion.div>
                 )}
-              </motion.div>
+              </AnimatePresence>
             </motion.div>
           );
         })()}
