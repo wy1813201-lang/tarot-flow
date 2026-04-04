@@ -52,19 +52,20 @@ export interface TarotReadingInput {
   positions: { name: string; card: string; orientation: string; keywords: string[] }[];
 }
 
-const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位资深的塔罗占卜导师。请根据以下信息进行专业深度解读：
+const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位塔罗占卜师。根据以下信息进行解读：
 问题：${input.question}
 牌阵：${input.spreadType}
-${input.isStrictMode ? "【严格模式】：给出最权威、最确定的深度剖析，结论不容置疑。" : ""}
+${input.isStrictMode ? "【严格模式】：给出最确定的判断，避免模糊词汇。" : ""}
 
-牌面详情：
-${input.positions.map((p, i) => `位置 ${i + 1} (${p.name}): ${p.card} (${p.orientation === 'upright' ? '正位' : '逆位'}) - 关键词: ${p.keywords.join(', ')}`).join('\n')}
+牌面：
+${input.positions.map((p, i) => `${i + 1}. ${p.name}: ${p.card}(${p.orientation === 'upright' ? '正' : '逆'})`).join(' | ')}
 
-解读要求：
-1. 结合每张牌的关键词，分析其在特定位置的含义与影响。
-2. 禁止使用"可能""也许""大概"等模糊词汇，给出确定性判断。
-3. 提供具体行动建议、心态调整方向、需警惕的风险。
-4. 提炼一句最核心的行动指南作为结尾。`;
+要求：
+1. 每张牌的解读控制在2-3句话，简洁有力
+2. 避免"可能""也许"等模糊词汇
+3. 整体趋势分析1-2句
+4. 行动建议、心态调整、风险警示各1句
+5. 核心建议1句`;
 
 const JSON_FORMAT_INSTRUCTION = `
 请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记）：
@@ -93,15 +94,93 @@ const RESPONSE_SCHEMA = {
 };
 
 // ===================== Parse =====================
-function parseAIResponse(text: string): TarotReading {
-  try {
-    const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/) || text.match(/(\{[\s\S]*\})/);
-    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
-    return JSON.parse(jsonStr.trim());
-  } catch {
-    console.error("Failed to parse AI response:", text);
-    throw new Error("AI 解读解析失败，请重试。");
+function extractFirstJSON(text: string): string {
+  // Find the first { and its matching } by tracking brace depth
+  const start = text.indexOf('{');
+  if (start === -1) return text;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    if (ch === '}') { depth--; if (depth === 0) return text.slice(start, i + 1); }
   }
+  // Unclosed — return from start and try to fix
+  return text.slice(start);
+}
+
+function tryFixTruncatedJSON(str: string): string {
+  let fixed = str.trim();
+  const unescapedQuotes = fixed.match(/(?<!\\)"/g);
+  if (unescapedQuotes && unescapedQuotes.length % 2 !== 0) fixed += '"';
+  const opens = (fixed.match(/\{/g) || []).length;
+  const closes = (fixed.match(/\}/g) || []).length;
+  for (let i = 0; i < opens - closes; i++) fixed += '}';
+  const openBrackets = (fixed.match(/\[/g) || []).length;
+  const closeBrackets = (fixed.match(/\]/g) || []).length;
+  for (let i = 0; i < openBrackets - closeBrackets; i++) fixed += ']';
+  return fixed;
+}
+
+function mergeFragmentedJSON(text: string): Record<string, unknown> | null {
+  // Handle cases where AI outputs {obj1},{obj2} as separate fragments
+  // Try to merge them into one object
+  try {
+    const wrapped = '[' + text + ']';
+    const arr = JSON.parse(wrapped);
+    if (Array.isArray(arr)) {
+      return arr.reduce((merged, item) => ({ ...merged, ...item }), {});
+    }
+  } catch { /* not mergeable */ }
+  return null;
+}
+
+function parseAIResponse(text: string): TarotReading {
+  // Strip <think>...</think> blocks (some models output thinking process)
+  // Also handle unclosed <think> tags (no closing </think>)
+  const cleaned = text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/<think>[\s\S]*/g, '')
+    .trim();
+
+  if (!cleaned) {
+    console.error("AI response was empty after stripping think tags. Original length:", text.length);
+    throw new Error("AI 返回内容为空，请重试。");
+  }
+
+  console.log("parseAIResponse cleaned (first 200 chars):", cleaned.slice(0, 200));
+
+  // Try code block extraction first
+  const codeBlock = cleaned.match(/```json\n?([\s\S]*?)\n?```/);
+  const raw = codeBlock ? codeBlock[1].trim() : cleaned;
+
+  // Extract the first complete JSON object (proper brace matching)
+  const jsonStr = extractFirstJSON(raw);
+
+  // Attempt 1: direct parse
+  try { return JSON.parse(jsonStr); } catch { /* continue */ }
+
+  // Attempt 2: fix truncated JSON (unclosed quotes/braces)
+  try { return JSON.parse(tryFixTruncatedJSON(jsonStr)); } catch { /* continue */ }
+
+  // Attempt 3: merge fragmented objects like {main},{extra}
+  const allObjects = raw.match(/\{[\s\S]*\}/)?.[0];
+  if (allObjects) {
+    const merged = mergeFragmentedJSON(allObjects);
+    if (merged) return merged as unknown as TarotReading;
+    // Also try fixing then merging
+    const fixed = tryFixTruncatedJSON(allObjects);
+    const mergedFixed = mergeFragmentedJSON(fixed);
+    if (mergedFixed) return mergedFixed as unknown as TarotReading;
+  }
+
+  console.error("Failed to parse AI response:", text);
+  throw new Error("AI 解读解析失败，请重试。");
 }
 
 // ===================== OpenAI-Compatible Provider =====================
@@ -120,7 +199,7 @@ function getProviderHint(cfg: AIConfig): string {
 async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean): Promise<string> {
   const isMinimax = cfg.provider === 'minimax';
   const messages = [
-    { role: 'system', content: '你是一位资深的塔罗占卜导师。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
+    { role: 'system', content: '你是一位资深的塔罗占卜导师。不要输出思考过程，直接输出结果。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
     { role: 'user', content: prompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
@@ -137,7 +216,7 @@ async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode
 async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean, onProgress: (s: string) => void): Promise<string> {
   const isMinimax = cfg.provider === 'minimax';
   const messages = [
-    { role: 'system', content: '你是一位资深的塔罗占卜导师。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
+    { role: 'system', content: '你是一位资深的塔罗占卜导师。不要输出思考过程，直接输出结果。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
     { role: 'user', content: prompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
@@ -163,7 +242,8 @@ async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, js
       if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
       try {
         const json = JSON.parse(line.slice(6));
-        accumulated += json.choices?.[0]?.delta?.content || '';
+        const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content || '';
+        accumulated += content;
       } catch { /* skip malformed chunks */ }
     }
     const len = accumulated.length;
@@ -172,6 +252,7 @@ async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, js
     else if (len < 1200) onProgress("正在生成建议...");
     else onProgress("即将完成...");
   }
+  console.log("Stream accumulated length:", accumulated.length, "first 300 chars:", accumulated.slice(0, 300));
   return accumulated;
 }
 
@@ -185,7 +266,7 @@ function geminiThinkingConfig(model: string) {
   const isPro = model.includes('pro') || model.includes('2.5');
   return isPro
     ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } }
-    : { thinkingConfig: { thinkingLevel: ThinkingLevel.NONE } };
+    : {};
 }
 
 async function callGemini(cfg: AIConfig, model: string, prompt: string): Promise<string> {

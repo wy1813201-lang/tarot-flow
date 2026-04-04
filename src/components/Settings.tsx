@@ -30,9 +30,9 @@ const PROVIDER_TABS: { key: ProviderKey; label: string; icon: typeof Cpu }[] = [
 ];
 
 const TIER_CONFIG = {
-  fast: { label: '极速', className: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
-  balanced: { label: '均衡', className: 'bg-blue-500/15 text-blue-400 border border-blue-500/20' },
-  deep: { label: '深度', className: 'bg-purple-500/15 text-purple-400 border border-purple-500/20' },
+  fast: { label: '极速', className: 'bg-emerald-50 text-emerald-600 border border-emerald-200' },
+  balanced: { label: '均衡', className: 'bg-[#DCE6EC] text-[#AEBCC6] border border-[#AEBCC6]/30' },
+  deep: { label: '深度', className: 'bg-[#E7D7B0]/30 text-[#C9A86A] border border-[#C9A86A]/30' },
 };
 
 const STORAGE_KEY = 'tarot_model';
@@ -71,34 +71,32 @@ export default function Settings({ open, onClose }: { open: boolean; onClose: ()
           className="fixed inset-0 z-[100] flex items-center justify-center"
           onClick={onClose}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-[#3D352E]/20 backdrop-blur-sm" />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg mx-4 bg-[#141210] border border-white/10 rounded-3xl p-6 space-y-5 max-h-[85vh] overflow-y-auto"
+            className="relative w-full max-w-lg mx-4 bg-[#FFFDF9] border border-[#E8E0D2] rounded-3xl p-6 space-y-5 max-h-[85vh] overflow-y-auto shadow-xl shadow-[#C9A86A]/10"
           >
-            {/* Header */}
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-serif">模型设置</h2>
-              <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
-                <X size={18} className="text-gray-400" />
+              <h2 className="text-xl font-serif text-[#3D352E]">模型设置</h2>
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-[#F3EEE6] transition-colors">
+                <X size={18} className="text-[#5C5349]" />
               </button>
             </div>
 
-            <p className="text-xs text-gray-500">不同模型有不同的解读风格和速度。</p>
+            <p className="text-xs text-[#5C5349]">不同模型有不同的解读风格和速度。</p>
 
-            {/* Provider Tabs */}
-            <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+            <div className="flex gap-1 p-1 bg-[#F3EEE6] rounded-xl">
               {PROVIDER_TABS.map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
                   className={`flex-1 flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                     activeTab === key
-                      ? 'bg-[#ff4e00] text-white shadow-lg shadow-[#ff4e00]/20'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      ? 'bg-[#C9A86A] text-white shadow-lg shadow-[#C9A86A]/20'
+                      : 'text-[#5C5349] hover:text-[#3D352E] hover:bg-[#FFFDF9]'
                   }`}
                 >
                   <Icon size={14} />
@@ -107,7 +105,6 @@ export default function Settings({ open, onClose }: { open: boolean; onClose: ()
               ))}
             </div>
 
-            {/* Model List */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -127,29 +124,29 @@ export default function Settings({ open, onClose }: { open: boolean; onClose: ()
                       whileTap={{ scale: 0.99 }}
                       className={`w-full text-left p-4 rounded-2xl border transition-all ${
                         selected === m.id
-                          ? 'bg-[#ff4e00]/10 border-[#ff4e00] border-l-2 border-l-[#ff4e00]'
-                          : 'bg-white/[0.03] border-white/[0.06] hover:border-white/20'
+                          ? 'bg-[#C9A86A]/5 border-[#C9A86A] border-l-2 border-l-[#C9A86A]'
+                          : 'bg-[#FAF7F2] border-[#E8E0D2] hover:border-[#C9A86A]/30'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm">{m.name}</span>
+                        <span className="font-medium text-sm text-[#3D352E]">{m.name}</span>
                         <div className="flex items-center gap-2">
                           <span className={`text-[10px] px-2 py-0.5 rounded-full ${tier.className}`}>
                             {tier.label}
                           </span>
                           {selected === m.id && (
-                            <span className="text-[10px] px-2 py-0.5 bg-[#ff4e00] text-white rounded-full">当前</span>
+                            <span className="text-[10px] px-2 py-0.5 bg-[#C9A86A] text-white rounded-full">当前</span>
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">{m.description}</p>
+                      <p className="text-xs text-[#5C5349] mt-1">{m.description}</p>
                     </motion.button>
                   );
                 })}
               </motion.div>
             </AnimatePresence>
 
-            <p className="text-[10px] text-gray-600 text-center pt-2">设置会自动保存，下次占卜时生效。</p>
+            <p className="text-[10px] text-[#5C5349]/60 text-center pt-2">设置会自动保存，下次占卜时生效。</p>
           </motion.div>
         </motion.div>
       )}

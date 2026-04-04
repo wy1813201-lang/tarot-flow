@@ -2,13 +2,23 @@
 
 @layer base {
   body {
-    @apply bg-[#0a0502] text-white antialiased;
+    @apply bg-[#FAF7F2] text-[#3D352E] antialiased;
   }
 
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255, 78, 0, 0.15); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 78, 0, 0.3); }
+  ::-webkit-scrollbar-thumb { background: rgba(201, 168, 106, 0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 106, 0.4); }
 
-  ::selection { background: rgba(255, 78, 0, 0.3); }
+  ::selection { background: rgba(201, 168, 106, 0.2); }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

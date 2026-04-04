@@ -26,18 +26,18 @@ export default class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0a0502] text-white flex items-center justify-center p-6 text-center">
+        <div className="min-h-screen bg-[#FAF7F2] text-[#3D352E] flex items-center justify-center p-6 text-center">
           <div className="max-w-md space-y-6">
-            <h1 className="text-4xl font-serif text-[#ff4e00]">命运的迷雾</h1>
-            <p className="text-gray-400 font-light">
+            <h1 className="text-4xl font-serif text-[#C9A86A]">命运的迷雾</h1>
+            <p className="text-[#5C5349] font-light">
               抱歉，连接灵感时发生了一些意外。这可能是由于网络波动或系统维护。
             </p>
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-xs font-mono text-left overflow-auto max-h-40">
+            <div className="p-4 bg-[#F3EEE6] rounded-xl border border-[#E8E0D2] text-xs font-mono text-left overflow-auto max-h-40 text-[#5C5349]">
               {this.state.error?.message}
             </div>
-            <button 
+            <button
               onClick={() => window.location.reload()}
-              className="px-8 py-3 bg-white text-black rounded-full font-medium hover:bg-gray-200 transition-colors"
+              className="px-8 py-3 bg-[#C9A86A] text-white rounded-full font-medium hover:bg-[#B8944F] transition-colors"
             >
               重新尝试
             </button>
