@@ -168,7 +168,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         orientation: cardData.orientation,
         keywords: cardData.keywords
       });
-      setSupplementaryCards(prev => [...prev, { ...cardData, interpretation: result.summary }]);
+      setSupplementaryCards(prev => [...prev, { ...cardData, interpretation: result.summary, chosenNumber: randomNum }]);
     } catch (err) {
       console.error("Supplementary interpretation failed:", err);
       setError("补牌解读失败，请重试。");
