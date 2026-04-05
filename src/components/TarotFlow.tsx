@@ -177,8 +177,8 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         keywords: cardData.keywords
       });
       setSupplementaryCards(prev => [...prev, { ...cardData, interpretation: result.summary, chosenNumber: randomNum }]);
-    } catch {
-      setError("补牌解读失败，请重试。");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "补牌解读失败，请重试。");
     } finally {
       setLoading(false);
     }
