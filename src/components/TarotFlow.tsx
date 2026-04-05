@@ -804,44 +804,21 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                       <h3 className="text-2xl font-serif text-[#3D352E]">补充建议</h3>
                       <div className="flex-1 h-px bg-gradient-to-r from-[#C9A86A]/20 to-transparent" />
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {supplementaryCards.map((sc, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: i * 0.12, duration: 0.5 }}
-                          className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FFFDF9] via-[#FFFBF5] to-[#F9F6F0] border border-[#E8E0D2] hover:border-[#C9A86A]/50 transition-all hover:shadow-2xl hover:shadow-[#C9A86A]/20">
+                        <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                          className="group p-5 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
 
-                          {/* Background accent */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-[#C9A86A]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                          <div className="relative flex gap-5 p-5">
-                            {/* Card image - larger and more prominent */}
-                            <div className="relative w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2] shadow-md group-hover:shadow-lg transition-all">
-                              <img
-                                src={sc.imageUrl}
-                                alt={sc.name}
-                                className={`w-full h-full object-cover group-hover:scale-125 transition-transform duration-500 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 flex flex-col justify-between min-w-0">
-                              {/* Header */}
-                              <div>
-                                <div className="flex items-center gap-2 mb-3">
-                                  <h4 className="text-base font-serif text-[#3D352E] font-semibold">{sc.name}</h4>
-                                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium shrink-0 backdrop-blur-sm ${sc.orientation === 'upright' ? 'bg-emerald-500/20 text-emerald-700 border border-emerald-500/40' : 'bg-red-500/20 text-red-700 border border-red-500/40'}`}>
-                                    {sc.orientation === 'upright' ? '正位' : '逆位'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-[#5C5349]/70 mb-3 font-light">{sc.nameEn}</p>
-                              </div>
-
-                              {/* Interpretation - highlighted */}
-                              <div className="p-3 rounded-lg bg-[#F3EEE6]/40 border border-[#E8E0D2]/50 group-hover:bg-[#C9A86A]/5 group-hover:border-[#C9A86A]/20 transition-all">
-                                <p className="text-sm text-[#3D352E] leading-relaxed font-light">{sc.interpretation}</p>
-                              </div>
-                            </div>
+                          {/* Card name + orientation badge */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <h4 className="text-sm font-serif text-[#3D352E] font-medium">{sc.name}</h4>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
+                              {sc.orientation === 'upright' ? '正位' : '逆位'}
+                            </span>
                           </div>
+
+                          {/* Interpretation text */}
+                          <p className="text-sm text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
                         </motion.div>
                       ))}
                     </div>
