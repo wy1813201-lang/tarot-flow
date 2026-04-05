@@ -662,14 +662,14 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                         <span className="text-[11px] text-[#5C5349]/60 font-serif italic tracking-wider">点击翻牌</span>
                       </div>
 
-                      {/* Front face */}
-                      <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${suit.gradient} border border-[#E8E0D2] flex flex-col items-center justify-center gap-2 select-none`}
+                      {/* Front face — real Rider-Waite image */}
+                      <div className="absolute inset-0 rounded-2xl border border-[#E8E0D2] overflow-hidden select-none"
                         style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                        <div className="absolute inset-2 border border-[#E8E0D2]/60 rounded-xl pointer-events-none" />
-                        <div className={`text-5xl ${currentCard.orientation === 'reversed' ? 'rotate-180' : ''}`}>
-                          {suit.symbol}
-                        </div>
-                        <p className="text-[9px] text-[#5C5349] tracking-[0.25em] uppercase mt-1">{suit.label}</p>
+                        <img
+                          src={currentCard.imageUrl}
+                          alt={currentCard.name}
+                          className={`w-full h-full object-cover ${currentCard.orientation === 'reversed' ? 'rotate-180' : ''}`}
+                        />
                       </div>
                     </motion.div>
                   </div>
