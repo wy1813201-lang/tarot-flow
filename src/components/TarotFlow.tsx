@@ -810,7 +810,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                           className="group flex gap-4 p-4 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
 
                           {/* Card image */}
-                          <div className="relative w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2]/50">
+                          <div className="relative w-28 h-40 shrink-0 rounded-lg overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2]/50">
                             <img
                               src={sc.imageUrl}
                               alt={sc.name}
