@@ -38,9 +38,13 @@ function getConfig(): AIConfig {
   return {
     provider,
     apiKey,
-    baseUrl: import.meta.env.VITE_AI_BASE_URL || d.baseUrl,
+    // When user explicitly selected a model, use that provider's default baseUrl
+    // instead of env var (which may belong to a different provider)
+    baseUrl: userModel ? d.baseUrl : (import.meta.env.VITE_AI_BASE_URL || d.baseUrl),
     model: userModel || import.meta.env.VITE_AI_MODEL || d.model,
-    modelLight: import.meta.env.VITE_AI_MODEL_LIGHT || d.modelLight,
+    // When user explicitly selected a model, use that provider's default light model
+    // instead of env var (which may belong to a different provider)
+    modelLight: userModel ? d.modelLight : (import.meta.env.VITE_AI_MODEL_LIGHT || d.modelLight),
   };
 }
 
