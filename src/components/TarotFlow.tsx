@@ -807,10 +807,10 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                     <div className="space-y-4">
                       {supplementaryCards.map((sc, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                          className="group flex gap-4 p-4 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
+                          className="group flex gap-5 p-5 rounded-2xl bg-gradient-to-br from-[#FFFDF9] to-[#F9F6F0] border border-[#E8E0D2] hover:border-[#C9A86A]/50 hover:shadow-xl hover:shadow-[#C9A86A]/15 transition-all">
 
-                          {/* Card image */}
-                          <div className="relative w-32 h-44 shrink-0 rounded-lg overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2]/50">
+                          {/* Card image - prominent */}
+                          <div className="relative w-32 h-44 shrink-0 rounded-xl overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2] shadow-md group-hover:shadow-lg transition-all">
                             <img
                               src={sc.imageUrl}
                               alt={sc.name}
@@ -818,15 +818,21 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                             />
                           </div>
 
-                          {/* Card info and interpretation */}
-                          <div className="flex-1 flex flex-col justify-start min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h4 className="text-sm font-serif text-[#3D352E] font-medium">{sc.name}</h4>
-                              <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
-                                {sc.orientation === 'upright' ? '正位' : '逆位'}
-                              </span>
+                          {/* Content - aligned with image height */}
+                          <div className="flex-1 flex flex-col justify-between min-w-0">
+                            {/* Header */}
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="text-base font-serif text-[#3D352E] font-semibold">{sc.name}</h4>
+                                <span className={`text-[9px] px-2.5 py-1 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
+                                  {sc.orientation === 'upright' ? '正位' : '逆位'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#5C5349]/70 mb-3">{sc.nameEn}</p>
                             </div>
-                            <p className="text-xs text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
+
+                            {/* Interpretation */}
+                            <p className="text-sm text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
                           </div>
                         </motion.div>
                       ))}
