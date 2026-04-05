@@ -340,6 +340,13 @@ export async function interpretSupplementary(input: {
   const text = cfg.provider === 'gemini'
     ? await callGeminiLight(cfg, cfg.modelLight, prompt)
     : await callOpenAI(cfg, cfg.modelLight, prompt, false); // minimax uses OpenAI-compatible API
-  return { summary: text || "暂无补充建议" };
+
+  // Strip <think>...</think> blocks from the response
+  const cleaned = text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/<think>[\s\S]*/g, '')
+    .trim();
+
+  return { summary: cleaned || "暂无补充建议" };
 }
 
