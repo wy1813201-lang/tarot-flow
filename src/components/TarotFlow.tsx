@@ -795,56 +795,65 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
               </div>
 
               {/* === Section D: Supplementary + Actions === */}
-              <div className="space-y-6 pt-4">
+              <div className="space-y-8 pt-8">
+                {/* Supplementary cards section */}
                 {supplementaryCards.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-0.5 h-6 bg-gradient-to-b from-blue-500 to-blue-500/0" />
-                      <h3 className="text-xl font-serif">补充建议</h3>
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    <div className="flex items-center gap-3 px-2">
+                      <div className="w-1 h-8 bg-gradient-to-b from-[#C9A86A] to-[#C9A86A]/30 rounded-full" />
+                      <h3 className="text-2xl font-serif text-[#3D352E]">补充建议</h3>
+                      <div className="flex-1 h-px bg-gradient-to-r from-[#C9A86A]/20 to-transparent" />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {supplementaryCards.map((sc, i) => {
                         const scSuit = getCardSuitStyle(sc.name);
                         return (
-                        <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                          className="p-5 rounded-2xl bg-[#FFFDF9] border border-[#E8E0D2] flex gap-4">
-                          <div className="text-2xl shrink-0">{scSuit.symbol}</div>
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-serif text-[#3D352E]">{sc.name}</h4>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${sc.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                                {sc.orientation === 'upright' ? '正位' : '逆位'}
-                              </span>
+                          <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                            className="group p-6 rounded-2xl bg-gradient-to-br from-[#FFFDF9] to-[#F9F6F0] border border-[#E8E0D2] hover:border-[#C9A86A]/40 transition-all hover:shadow-lg hover:shadow-[#C9A86A]/10">
+                            <div className="flex gap-4">
+                              <div className="text-4xl shrink-0 group-hover:scale-110 transition-transform">{scSuit.symbol}</div>
+                              <div className="space-y-2.5 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base font-serif text-[#3D352E] font-medium">{sc.name}</h4>
+                                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
+                                    {sc.orientation === 'upright' ? '正位' : '逆位'}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
+                              </div>
                             </div>
-                            <p className="text-xs text-[#5C5349]/80 leading-relaxed">{sc.interpretation}</p>
-                          </div>
-                        </motion.div>
+                          </motion.div>
                         );
                       })}
                     </div>
-                  </div>
-                )}
-
-                {error && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
-                    <AlertCircle className="text-red-400 shrink-0" size={20} />
-                    <p className="text-red-300 text-sm">{error}</p>
                   </motion.div>
                 )}
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 pb-4">
-                  {!isStrictMode && (
-                    <motion.button whileTap={{ scale: 0.97 }} onClick={drawSupplementaryCard} disabled={loading}
-                      className="w-full sm:w-auto px-8 py-3 bg-[#F3EEE6] border border-[#E8E0D2] text-[#C9A86A] rounded-full font-medium hover:bg-[#E7D7B0] transition-all flex items-center justify-center gap-2">
+                {/* Draw supplementary button */}
+                {!isStrictMode && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex justify-center pt-4">
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={drawSupplementaryCard} disabled={loading}
+                      className="px-8 py-3.5 bg-gradient-to-r from-[#F3EEE6] to-[#E7D7B0] border border-[#E8E0D2] text-[#C9A86A] rounded-full font-medium hover:shadow-lg hover:shadow-[#C9A86A]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                       {loading ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
                       <span>补抽一张牌</span>
                     </motion.button>
-                  )}
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={onComplete}
-                    className="w-full sm:w-auto px-12 py-4 bg-[#C9A86A] text-white rounded-full font-medium hover:bg-[#B8944F] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#C9A86A]/20">
-                    <span>查看历史记录</span><ChevronRight size={18} />
+                  </motion.div>
+                )}
+
+                {error && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
+                    <AlertCircle className="text-red-400 shrink-0" size={20} />
+                    <p className="text-red-600 text-sm font-medium">{error}</p>
+                  </motion.div>
+                )}
+
+                {/* Final action button */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex justify-center pt-6 pb-8">
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={onComplete}
+                    className="px-16 py-4 bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0] text-white rounded-full font-medium hover:shadow-2xl hover:shadow-[#C9A86A]/30 transition-all flex items-center justify-center gap-2 text-lg">
+                    <span>查看历史记录</span><ChevronRight size={20} />
                   </motion.button>
-                </div>
+                </motion.div>
               </div>
               </motion.div>
             )}
