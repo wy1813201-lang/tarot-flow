@@ -804,32 +804,32 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                       <h3 className="text-2xl font-serif text-[#3D352E]">补充建议</h3>
                       <div className="flex-1 h-px bg-gradient-to-r from-[#C9A86A]/20 to-transparent" />
                     </div>
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {supplementaryCards.map((sc, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
-                          className="group flex gap-4 p-4 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
+                        <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
+                          className="group flex flex-col rounded-xl overflow-hidden bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
 
-                          {/* Card image - compact */}
-                          <div className="relative w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2]/50">
+                          {/* Card image */}
+                          <div className="relative h-40 overflow-hidden bg-[#F3EEE6]">
                             <img
                               src={sc.imageUrl}
                               alt={sc.name}
-                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
+                              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
                             />
                           </div>
 
-                          {/* Card info - compact */}
-                          <div className="flex-1 flex flex-col justify-between min-w-0">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-sm font-serif text-[#3D352E] font-medium truncate">{sc.name}</h4>
-                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
-                                  {sc.orientation === 'upright' ? '正位' : '逆位'}
-                                </span>
+                          {/* Card info */}
+                          <div className="p-4 space-y-2.5 flex-1 flex flex-col">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-serif text-[#3D352E] font-medium">{sc.name}</h4>
+                                <p className="text-xs text-[#5C5349]/60">{sc.nameEn}</p>
                               </div>
-                              <p className="text-xs text-[#5C5349]/60 mb-2">{sc.nameEn}</p>
-                              <p className="text-xs text-[#5C5349] leading-relaxed line-clamp-2">{sc.interpretation}</p>
+                              <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
+                                {sc.orientation === 'upright' ? '正位' : '逆位'}
+                              </span>
                             </div>
+                            <p className="text-xs text-[#5C5349] leading-relaxed flex-1">{sc.interpretation}</p>
                           </div>
                         </motion.div>
                       ))}
