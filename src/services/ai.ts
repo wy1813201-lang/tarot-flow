@@ -76,8 +76,17 @@ const JSON_FORMAT_INSTRUCTION = `
   "finalAdvice": "核心建议"
 }`;
 
-const SUPPLEMENTARY_PROMPT = (input: { question: string; card: string; orientation: string; keywords: string[] }) =>
-  `你是一位塔罗占卜师。针对问题"${input.question}"，用户补抽了一张牌：${input.card}（${input.orientation === 'upright' ? '正位' : '逆位'}），关键词：${input.keywords.join('、')}。请用2-3句话给出简洁有力的补充建议，不要使用"可能""也许"等模糊词汇。`;
+const SUPPLEMENTARY_PROMPT = (input: { question: string; card: string; orientation: string; keywords: string[] }) => {
+  const orientation = input.orientation === 'upright' ? '正位' : '逆位';
+  const keywordStr = input.keywords.join('、');
+  return `你是一位资深的塔罗占卜师。针对问题"${input.question}"，用户补抽了一张牌：${input.card}（${orientation}），关键词：${keywordStr}。
+
+根据这张牌的含义，给出2-3句直接、有力的建议。要求：
+1. 直接指出这张牌对问题的启示，不使用"可能""也许""大概"等模糊词汇
+2. 给出明确的行动指导或心态调整方向
+3. 语气要像一位经验丰富的占卜师，充满确定性和洞察力
+4. 避免重复问题本身，直接给出建议`;
+};
 
 // ===================== Gemini Schema =====================
 const RESPONSE_SCHEMA = {
