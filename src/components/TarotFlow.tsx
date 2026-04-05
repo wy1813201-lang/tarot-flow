@@ -804,42 +804,32 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                       <h3 className="text-2xl font-serif text-[#3D352E]">补充建议</h3>
                       <div className="flex-1 h-px bg-gradient-to-r from-[#C9A86A]/20 to-transparent" />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-4">
                       {supplementaryCards.map((sc, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: i * 0.12, duration: 0.5 }}
-                          className="group flex flex-col rounded-2xl overflow-hidden bg-white border border-[#E8E0D2] hover:border-[#C9A86A]/60 transition-all hover:shadow-2xl hover:shadow-[#C9A86A]/15">
+                        <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
+                          className="group flex gap-4 p-4 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
 
-                          {/* Card image */}
-                          <div className="relative h-48 overflow-hidden bg-[#F3EEE6]">
+                          {/* Card image - compact */}
+                          <div className="relative w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2]/50">
                             <img
                               src={sc.imageUrl}
                               alt={sc.name}
-                              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
+                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
 
-                          {/* Card info */}
-                          <div className="p-5 space-y-3 flex-1 flex flex-col">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <h4 className="text-base font-serif text-[#3D352E] font-medium leading-tight">{sc.name}</h4>
-                                <p className="text-xs text-[#5C5349]/60 mt-1">{sc.nameEn}</p>
+                          {/* Card info - compact */}
+                          <div className="flex-1 flex flex-col justify-between min-w-0">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-sm font-serif text-[#3D352E] font-medium truncate">{sc.name}</h4>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
+                                  {sc.orientation === 'upright' ? '正位' : '逆位'}
+                                </span>
                               </div>
-                              <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
-                                {sc.orientation === 'upright' ? '正位' : '逆位'}
-                              </span>
+                              <p className="text-xs text-[#5C5349]/60 mb-2">{sc.nameEn}</p>
+                              <p className="text-xs text-[#5C5349] leading-relaxed line-clamp-2">{sc.interpretation}</p>
                             </div>
-
-                            {/* Keywords */}
-                            <div className="flex flex-wrap gap-1.5">
-                              {sc.keywords?.slice(0, 2).map(k => (
-                                <span key={k} className="text-[10px] px-2 py-1 bg-[#F3EEE6] rounded-full text-[#5C5349]/70">{k}</span>
-                              ))}
-                            </div>
-
-                            {/* Interpretation */}
-                            <p className="text-sm text-[#5C5349] leading-relaxed flex-1">{sc.interpretation}</p>
                           </div>
                         </motion.div>
                       ))}
