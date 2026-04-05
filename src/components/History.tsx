@@ -133,7 +133,7 @@ export default function History() {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
                             <h5 className="text-xs text-[#C9A86A] font-serif uppercase tracking-widest mb-1">行动建议</h5>
-                            <p className="text-xs text-[#5C5349] leading-relaxed">{session.reading.suggestions.actionAdvice}</p>
+                            <p className="text-xs text-[#5C5349] leading-relaxed">{session.reading.suggestions.actionableSteps}</p>
                           </div>
                           <div>
                             <h5 className="text-xs text-[#C9A86A] font-serif uppercase tracking-widest mb-1">心态调整</h5>

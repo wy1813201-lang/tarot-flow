@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SPREADS, SpreadType } from '../constants/tarot';
 import { shuffleDeck, generateHash, getCardsFromSelection, TarotSession } from '../lib/tarotLogic';
 import { interpretTarotStream, interpretSupplementary } from '../services/ai';
 import { TarotReading } from '../types/reading';
-import { ArrowRight, ArrowLeft, RefreshCw, Hash, CheckCircle2, Loader2, Sparkles, ChevronRight, ShieldAlert, Plus, Zap, Columns, Layout, Heart, Briefcase, Calendar, Compass, AlertCircle, TrendingUp } from 'lucide-react';
+import { ArrowRight, ArrowLeft, RefreshCw, Hash, CheckCircle2, Loader2, Sparkles, ChevronRight, ShieldAlert, Plus, Zap, Columns, Layout, Heart, Briefcase, Calendar, Compass, AlertCircle, TrendingUp, Dice5 } from 'lucide-react';
 
 type Step = 'setup' | 'shuffle' | 'select' | 'flip' | 'result';
 
@@ -64,6 +64,23 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
   const [elapsedSec, setElapsedSec] = useState(0);
   const [cardIndex, setCardIndex] = useState(0);
   const [cardFlipped, setCardFlipped] = useState(false);
+  const [diceRolling, setDiceRolling] = useState(false);
+  const [diceResult, setDiceResult] = useState<number | null>(null);
+
+  // Memoize particle positions for flip stage
+  const stars = useMemo(() => Array.from({ length: 40 }, () => ({
+    w: Math.random() * 2 + 1, left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`,
+    dur: 2 + Math.random() * 3, delay: Math.random() * 2,
+  })), []);
+  const dustParticles = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+    dur: 4 + i * 0.4, delay: i * 0.3, left: `${10 + i * 7}%`,
+  })), []);
+
+  // Memoize card selections
+  const selectedCards = useMemo(() => {
+    if (!session || chosenNumbers.length === 0) return [];
+    return getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
+  }, [session, chosenNumbers]);
 
   // Timer: counts up while loading
   React.useEffect(() => {
@@ -96,14 +113,6 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
     }, 1500);
   };
 
-  const handleSelect = (num: number) => {
-    if (chosenNumbers.includes(num)) {
-      setChosenNumbers(prev => prev.filter(n => n !== num));
-    } else if (chosenNumbers.length < SPREADS[spreadType].count) {
-      setChosenNumbers(prev => [...prev, num]);
-    }
-  };
-
   const startReading = async () => {
     if (chosenNumbers.length !== SPREADS[spreadType].count || !session) return;
     setLoading(true);
@@ -132,8 +141,8 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         const existing = JSON.parse(localStorage.getItem('tarot_sessions') || '[]');
         existing.unshift({ id: crypto.randomUUID(), ...finalSession });
         localStorage.setItem('tarot_sessions', JSON.stringify(existing.slice(0, 100)));
-      } catch (err) {
-        console.error('localStorage save failed:', err);
+      } catch {
+        // localStorage save failed silently
       }
       setReading(result);
       setCardIndex(0);
@@ -141,8 +150,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
       setStep('flip');
       setLoading(false);
       setProgressStage('');
-    } catch (err) {
-      console.error("AI interpretation failed:", err);
+    } catch {
       setError("AI 解读失败，请检查网络后重试。");
       setLoading(false);
       setProgressStage('');
@@ -169,8 +177,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         keywords: cardData.keywords
       });
       setSupplementaryCards(prev => [...prev, { ...cardData, interpretation: result.summary, chosenNumber: randomNum }]);
-    } catch (err) {
-      console.error("Supplementary interpretation failed:", err);
+    } catch {
       setError("补牌解读失败，请重试。");
     } finally {
       setLoading(false);
@@ -278,7 +285,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         )}
 
         {step === 'flip' && reading && session && (() => {
-          const cards = getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
+          const cards = selectedCards;
           const cardCount = cards.length;
           const allDone = cardIndex >= cardCount;
           const current = !allDone ? cards[cardIndex] : null;
@@ -292,29 +299,24 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
               style={{ background: 'radial-gradient(ellipse at center, #1a1410 0%, #0d0a07 100%)' }}
             >
               {/* Stars background */}
-              {Array.from({ length: 40 }).map((_, i) => (
+              {stars.map((s, i) => (
                 <motion.div
                   key={i}
                   className="absolute rounded-full bg-white"
-                  style={{
-                    width: Math.random() * 2 + 1,
-                    height: Math.random() * 2 + 1,
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                  }}
+                  style={{ width: s.w, height: s.w, left: s.left, top: s.top }}
                   animate={{ opacity: [0.1, 0.8, 0.1] }}
-                  transition={{ duration: 2 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 2 }}
+                  transition={{ duration: s.dur, repeat: Infinity, delay: s.delay }}
                 />
               ))}
 
               {/* Gold dust particles */}
-              {Array.from({ length: 12 }).map((_, i) => (
+              {dustParticles.map((d, i) => (
                 <motion.div
                   key={`dust-${i}`}
                   className="absolute w-0.5 h-0.5 bg-[#C9A86A] rounded-full"
                   animate={{ y: [0, -window.innerHeight], opacity: [0, 1, 0] }}
-                  transition={{ duration: 4 + i * 0.4, repeat: Infinity, delay: i * 0.3 }}
-                  style={{ left: `${10 + i * 7}%`, bottom: 0 }}
+                  transition={{ duration: d.dur, repeat: Infinity, delay: d.delay }}
+                  style={{ left: d.left, bottom: 0 }}
                 />
               ))}
 
@@ -522,19 +524,89 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
               <ArrowLeft size={16} /><span>返回洗牌</span>
             </button>
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-serif">请选择 {SPREADS[spreadType].count} 个数字</h3>
-              <p className="text-[#5C5349]/80 text-sm italic">凭直觉从 1 到 78 中选择位置</p>
+              <h3 className="text-2xl font-serif">投掷骰子选牌</h3>
+              <p className="text-[#5C5349]/80 text-sm italic">点击骰子，随机抽取 {SPREADS[spreadType].count} 张牌</p>
             </div>
-            <div className="grid grid-cols-6 sm:grid-cols-10 gap-2" role="group" aria-label="选择数字">
-              {Array.from({ length: 78 }, (_, i) => i + 1).map((num) => (
-                <button key={num} onClick={() => handleSelect(num)} disabled={!chosenNumbers.includes(num) && chosenNumbers.length >= SPREADS[spreadType].count}
-                  aria-pressed={chosenNumbers.includes(num)}
-                  aria-label={`数字 ${num}${chosenNumbers.includes(num) ? '，已选择' : ''}`}
-                  className={`aspect-square rounded-lg flex items-center justify-center text-xs font-mono transition-all border ${chosenNumbers.includes(num) ? 'bg-[#C9A86A] border-[#C9A86A] text-white' : 'bg-[#F3EEE6] border-[#E8E0D2] hover:border-[#C9A86A]/30 text-[#5C5349] disabled:opacity-20'}`}>
-                  {num}
-                </button>
-              ))}
+
+            {/* Dice button */}
+            <div className="flex flex-col items-center gap-6">
+              <motion.button
+                onClick={() => {
+                  if (diceRolling || chosenNumbers.length >= SPREADS[spreadType].count) return;
+                  setDiceRolling(true);
+                  setDiceResult(null);
+                  // Animate for 600ms, then pick a random number
+                  setTimeout(() => {
+                    const available = Array.from({ length: 78 }, (_, i) => i + 1).filter(n => !chosenNumbers.includes(n));
+                    const picked = available[Math.floor(Math.random() * available.length)];
+                    setDiceResult(picked);
+                    setChosenNumbers(prev => [...prev, picked]);
+                    setDiceRolling(false);
+                  }, 600);
+                }}
+                disabled={chosenNumbers.length >= SPREADS[spreadType].count}
+                whileHover={chosenNumbers.length < SPREADS[spreadType].count ? { scale: 1.08 } : {}}
+                whileTap={chosenNumbers.length < SPREADS[spreadType].count ? { scale: 0.92 } : {}}
+                className={`w-28 h-28 rounded-3xl flex items-center justify-center transition-all shadow-lg ${
+                  chosenNumbers.length >= SPREADS[spreadType].count
+                    ? 'bg-[#E8E0D2] text-[#5C5349]/30 cursor-default'
+                    : 'bg-gradient-to-br from-[#C9A86A] to-[#B8944F] text-white cursor-pointer hover:shadow-xl hover:shadow-[#C9A86A]/20'
+                }`}
+              >
+                <motion.div
+                  animate={diceRolling ? { rotate: [0, 90, 180, 270, 360], scale: [1, 1.2, 0.9, 1.1, 1] } : {}}
+                  transition={{ duration: 0.6, ease: 'easeInOut' }}
+                >
+                  <Dice5 size={48} />
+                </motion.div>
+              </motion.button>
+
+              {/* Rolling result display */}
+              <AnimatePresence mode="wait">
+                {diceRolling && (
+                  <motion.p key="rolling" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="text-lg font-serif text-[#C9A86A] italic">
+                    掷骰中…
+                  </motion.p>
+                )}
+                {!diceRolling && diceResult && (
+                  <motion.p key={`result-${diceResult}`}
+                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-3xl font-mono font-bold text-[#C9A86A]">
+                    {diceResult}
+                  </motion.p>
+                )}
+                {!diceRolling && !diceResult && chosenNumbers.length === 0 && (
+                  <motion.p key="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.6 }}
+                    className="text-sm text-[#5C5349] italic">
+                    点击上方骰子开始
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </div>
+
+            {/* Selected numbers as removable chips */}
+            {chosenNumbers.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-wrap justify-center gap-2">
+                {chosenNumbers.map((num, i) => (
+                  <motion.button
+                    key={`${num}-${i}`}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.1 }}
+                    onClick={() => setChosenNumbers(prev => prev.filter((_, idx) => idx !== i))}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#C9A86A]/15 text-[#C9A86A] text-sm font-mono border border-[#C9A86A]/30 hover:bg-red-50 hover:text-red-400 hover:border-red-300 transition-colors"
+                    title="点击移除"
+                  >
+                    <span className="text-xs text-[#5C5349]/50">#{i + 1}</span>
+                    <span className="font-bold">{num}</span>
+                    <span className="text-[10px] opacity-50">✕</span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
 
             {error && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
@@ -547,7 +619,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
             <div className="sticky bottom-6 left-0 right-0 flex flex-col items-center gap-4">
               <div className="flex gap-2">
                 {Array.from({ length: SPREADS[spreadType].count }).map((_, i) => (
-                  <div key={i} className={`w-3 h-3 rounded-full border ${chosenNumbers[i] ? 'bg-[#C9A86A] border-[#C9A86A]' : 'bg-transparent border-[#E8E0D2]'}`} />
+                  <div key={i} className={`w-3 h-3 rounded-full border transition-all ${chosenNumbers[i] ? 'bg-[#C9A86A] border-[#C9A86A] scale-110' : 'bg-transparent border-[#E8E0D2]'}`} />
                 ))}
               </div>
               <button disabled={chosenNumbers.length !== SPREADS[spreadType].count || loading} onClick={startReading}
@@ -583,7 +655,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         )}
 
         {step === 'result' && reading && session && (() => {
-          const cards = getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
+          const cards = selectedCards;
           const cardCount = cards.length;
 
           return (
@@ -807,10 +879,10 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                     <div className="space-y-4">
                       {supplementaryCards.map((sc, i) => (
                         <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                          className="group flex gap-5 p-5 rounded-2xl bg-gradient-to-br from-[#FFFDF9] to-[#F9F6F0] border border-[#E8E0D2] hover:border-[#C9A86A]/50 hover:shadow-xl hover:shadow-[#C9A86A]/15 transition-all">
+                          className="group flex flex-col sm:flex-row gap-4 sm:gap-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#FFFDF9] to-[#F9F6F0] border border-[#E8E0D2] hover:border-[#C9A86A]/50 hover:shadow-xl hover:shadow-[#C9A86A]/15 transition-all">
 
                           {/* Card image - prominent */}
-                          <div className="relative w-32 h-44 shrink-0 rounded-xl overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2] shadow-md group-hover:shadow-lg transition-all">
+                          <div className="relative w-24 h-36 sm:w-32 sm:h-44 mx-auto sm:mx-0 shrink-0 rounded-xl overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2] shadow-md group-hover:shadow-lg transition-all">
                             <img
                               src={sc.imageUrl}
                               alt={sc.name}
@@ -818,21 +890,21 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                             />
                           </div>
 
-                          {/* Content - aligned with image height */}
+                          {/* Content */}
                           <div className="flex-1 flex flex-col justify-between min-w-0">
                             {/* Header */}
                             <div>
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
                                 <h4 className="text-base font-serif text-[#3D352E] font-semibold">{sc.name}</h4>
                                 <span className={`text-[9px] px-2.5 py-1 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
                                   {sc.orientation === 'upright' ? '正位' : '逆位'}
                                 </span>
                               </div>
-                              <p className="text-xs text-[#5C5349]/70 mb-3">{sc.nameEn}</p>
+                              <p className="text-xs text-[#5C5349]/70 text-center sm:text-left mb-3">{sc.nameEn}</p>
                             </div>
 
                             {/* Interpretation */}
-                            <p className="text-sm text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
+                            <p className="text-sm text-[#5C5349] leading-relaxed text-center sm:text-left">{sc.interpretation}</p>
                           </div>
                         </motion.div>
                       ))}

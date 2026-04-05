@@ -157,14 +157,11 @@ function parseAIResponse(text: string): TarotReading {
     .trim();
 
   if (!cleaned) {
-    console.error("AI response was empty after stripping think tags. Original length:", text.length);
     throw new Error("AI 返回内容为空，请重试。");
   }
 
-  console.log("parseAIResponse cleaned (first 200 chars):", cleaned.slice(0, 200));
-
-  // Try code block extraction first
-  const codeBlock = cleaned.match(/```json\n?([\s\S]*?)\n?```/);
+  // Extract content from markdown code blocks like ```json ... ```
+  const codeBlock = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = codeBlock ? codeBlock[1].trim() : cleaned;
 
   // Extract the first complete JSON object (proper brace matching)
@@ -187,7 +184,6 @@ function parseAIResponse(text: string): TarotReading {
     if (mergedFixed) return mergedFixed as unknown as TarotReading;
   }
 
-  console.error("Failed to parse AI response:", text);
   throw new Error("AI 解读解析失败，请重试。");
 }
 
@@ -216,7 +212,10 @@ async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode
   const body: Record<string, unknown> = { model, messages, provider: providerHint };
   if (jsonMode && !isMinimax) body.response_format = { type: 'json_object' };
   const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`AI 请求失败 (${res.status})`);
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    throw new Error(`AI 请求失败 (${res.status}): ${errBody.slice(0, 200)}`);
+  }
   const data = await res.json();
   return data.choices?.[0]?.message?.content || '';
 }
@@ -233,7 +232,10 @@ async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, js
   const body: Record<string, unknown> = { model, messages, stream: true, provider: providerHint };
   if (jsonMode && !isMinimax) body.response_format = { type: 'json_object' };
   const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error(`AI 请求失败 (${res.status})`);
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    throw new Error(`AI 请求失败 (${res.status}): ${errBody.slice(0, 200)}`);
+  }
 
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
@@ -260,7 +262,6 @@ async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, js
     else if (len < 1200) onProgress("正在生成建议...");
     else onProgress("即将完成...");
   }
-  console.log("Stream accumulated length:", accumulated.length, "first 300 chars:", accumulated.slice(0, 300));
   return accumulated;
 }
 
