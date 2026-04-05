@@ -199,8 +199,8 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
               {/* Scrollable suggested questions */}
               <div className="space-y-2.5 -mx-6">
                 <p className="text-[10px] uppercase tracking-widest text-[#5C5349] font-serif px-6">推荐问题</p>
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-2 px-6 pb-1" style={{ width: 'max-content' }}>
+                <div className="overflow-hidden">
+                  <motion.div className="flex gap-2 px-6 pb-1" animate={{ x: [0, -1000, 0] }} transition={{ repeat: Infinity, duration: 30, ease: 'linear' }} style={{ width: 'max-content' }}>
                     {SUGGESTED_QUESTIONS.flatMap((group) =>
                       group.questions.map((q) => (
                         <button key={q} onClick={() => setQuestion(q)} className="px-3.5 py-2 rounded-full bg-[#F3EEE6] border border-[#E8E0D2]/50 text-[11px] text-[#5C5349] hover:border-[#C9A86A]/40 hover:bg-[#C9A86A]/5 transition-all whitespace-nowrap shrink-0">
@@ -208,7 +208,7 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                         </button>
                       ))
                     )}
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </div>
