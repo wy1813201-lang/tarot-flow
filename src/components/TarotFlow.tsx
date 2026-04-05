@@ -804,33 +804,11 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                       <h3 className="text-2xl font-serif text-[#3D352E]">补充建议</h3>
                       <div className="flex-1 h-px bg-gradient-to-r from-[#C9A86A]/20 to-transparent" />
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {supplementaryCards.map((sc, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                          className="group flex gap-4 p-4 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/40 hover:shadow-lg hover:shadow-[#C9A86A]/10 transition-all">
-
-                          {/* Card image - left side */}
-                          <div className="relative w-28 h-40 shrink-0 rounded-lg overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2]/50">
-                            <img
-                              src={sc.imageUrl}
-                              alt={sc.name}
-                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
-                            />
-                          </div>
-
-                          {/* Card info - right side */}
-                          <div className="flex-1 flex flex-col justify-start min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-serif text-[#3D352E] font-medium">{sc.name}</h4>
-                                <p className="text-xs text-[#5C5349]/60">{sc.nameEn}</p>
-                              </div>
-                              <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
-                                {sc.orientation === 'upright' ? '正位' : '逆位'}
-                              </span>
-                            </div>
-                            <p className="text-xs text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
-                          </div>
+                        <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+                          className="p-4 rounded-lg bg-[#FFFDF9] border border-[#E8E0D2] hover:border-[#C9A86A]/30 hover:shadow-md hover:shadow-[#C9A86A]/5 transition-all">
+                          <p className="text-sm text-[#5C5349] leading-relaxed">{sc.interpretation}</p>
                         </motion.div>
                       ))}
                     </div>
