@@ -280,8 +280,8 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
         {step === 'flip' && reading && session && (() => {
           const cards = getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
           const cardCount = cards.length;
-          const current = cards[cardIndex];
           const allDone = cardIndex >= cardCount;
+          const current = !allDone ? cards[cardIndex] : null;
 
           return (
             <motion.div
