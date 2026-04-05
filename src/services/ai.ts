@@ -152,6 +152,20 @@ function mergeFragmentedJSON(text: string): Record<string, unknown> | null {
   return null;
 }
 
+// Normalize parsed AI response: some models (e.g. MiniMax) return arrays
+// instead of strings for suggestions fields — join them into strings.
+function normalizeReading(obj: Record<string, unknown>): TarotReading {
+  const s = obj.suggestions as Record<string, unknown> | undefined;
+  if (s) {
+    for (const key of ['actionableSteps', 'mindsetShift', 'warningSigns'] as const) {
+      if (Array.isArray(s[key])) {
+        s[key] = (s[key] as string[]).join('\n');
+      }
+    }
+  }
+  return obj as unknown as TarotReading;
+}
+
 function parseAIResponse(text: string): TarotReading {
   // Strip <think>...</think> blocks (some models output thinking process)
   // Also handle unclosed <think> tags (no closing </think>)
@@ -172,20 +186,20 @@ function parseAIResponse(text: string): TarotReading {
   const jsonStr = extractFirstJSON(raw);
 
   // Attempt 1: direct parse
-  try { return JSON.parse(jsonStr); } catch { /* continue */ }
+  try { return normalizeReading(JSON.parse(jsonStr)); } catch { /* continue */ }
 
   // Attempt 2: fix truncated JSON (unclosed quotes/braces)
-  try { return JSON.parse(tryFixTruncatedJSON(jsonStr)); } catch { /* continue */ }
+  try { return normalizeReading(JSON.parse(tryFixTruncatedJSON(jsonStr))); } catch { /* continue */ }
 
   // Attempt 3: merge fragmented objects like {main},{extra}
   const allObjects = raw.match(/\{[\s\S]*\}/)?.[0];
   if (allObjects) {
     const merged = mergeFragmentedJSON(allObjects);
-    if (merged) return merged as unknown as TarotReading;
+    if (merged) return normalizeReading(merged as Record<string, unknown>);
     // Also try fixing then merging
     const fixed = tryFixTruncatedJSON(allObjects);
     const mergedFixed = mergeFragmentedJSON(fixed);
-    if (mergedFixed) return mergedFixed as unknown as TarotReading;
+    if (mergedFixed) return normalizeReading(mergedFixed as Record<string, unknown>);
   }
 
   throw new Error("AI 解读解析失败，请重试。");
