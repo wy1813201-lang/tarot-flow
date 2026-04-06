@@ -676,6 +676,33 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 className="text-3xl sm:text-4xl font-serif leading-tight">{reading.summary}</motion.h2>
             </div>
 
+            {/* === Card Strip: always visible in result step === */}
+            <div className="mb-8">
+              <div className="flex flex-wrap justify-center gap-3 sm:gap-5">
+                {cards.map((c, idx) => (
+                  <motion.div key={`recap-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + idx * 0.08 }}
+                    className="flex flex-col items-center gap-1.5 group cursor-default">
+                    {/* Position label */}
+                    <p className="text-[8px] sm:text-[10px] text-[#C9A86A] font-serif tracking-wider uppercase">
+                      {SPREADS[spreadType].positions[idx]}
+                    </p>
+                    <div className="relative w-14 h-24 sm:w-20 sm:h-32 rounded-lg sm:rounded-xl overflow-hidden shadow-md border border-[#E8E0D2] group-hover:shadow-lg group-hover:shadow-[#C9A86A]/15 transition-all group-hover:-translate-y-1 group-hover:border-[#C9A86A]/40">
+                      <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] sm:text-[11px] font-serif text-[#3D352E] font-medium max-w-[72px] break-words leading-tight">{c.name}</p>
+                      <p className={`text-[8px] sm:text-[9px] mt-0.5 px-1.5 py-0.5 rounded-full border inline-block ${c.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
+                        {c.orientation === 'upright' ? '正位' : '逆位'}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <SectionDivider />
+
             {/* === Section B: 全屏单张翻牌舞台 === */}
             <AnimatePresence mode="wait">
             {cardIndex < cardCount ? (() => {
@@ -813,34 +840,8 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
               >
-              
-              {/* === Sticky card strip — always visible while scrolling === */}
-              <div className="sticky top-0 z-20 bg-gradient-to-b from-[#FAF7F2] via-[#FAF7F2] to-[#FAF7F2]/0 pt-4 pb-6">
-                <div className="flex flex-wrap justify-center gap-3 sm:gap-5">
-                  {cards.map((c, idx) => (
-                    <motion.div key={`recap-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + idx * 0.08 }}
-                      className="flex flex-col items-center gap-1.5 group cursor-default">
-                      {/* Position label */}
-                      <p className="text-[8px] sm:text-[10px] text-[#C9A86A] font-serif tracking-wider uppercase">
-                        {SPREADS[spreadType].positions[idx]}
-                      </p>
-                      <div className="relative w-12 h-20 sm:w-20 sm:h-32 rounded-lg sm:rounded-xl overflow-hidden shadow-md border border-[#E8E0D2] group-hover:shadow-lg group-hover:shadow-[#C9A86A]/15 transition-all group-hover:-translate-y-1 group-hover:border-[#C9A86A]/40">
-                        <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#C9A86A]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[9px] sm:text-[11px] font-serif text-[#3D352E] font-medium max-w-[72px] break-words leading-tight">{c.name}</p>
-                        <p className={`text-[8px] sm:text-[9px] mt-0.5 px-1.5 py-0.5 rounded-full border inline-block ${c.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
-                          {c.orientation === 'upright' ? '正位' : '逆位'}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
 
-              <SectionDivider />
-              <div className="space-y-10 mt-10 mb-16">
+              <div className="space-y-10 mt-4 mb-16">
                 {/* Overall Trend */}
                 <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                   className="p-6 sm:p-8 rounded-2xl bg-[#FFFDF9] border border-[#E8E0D2]">
