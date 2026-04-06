@@ -813,6 +813,25 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
               >
+              
+              {/* === Display all 5 (or selected number) cards before analysis === */}
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mt-2 mb-8">
+                {cards.map((c, idx) => (
+                  <motion.div key={`recap-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + idx * 0.1 }}
+                    className="flex flex-col items-center gap-2 group">
+                    <div className="relative w-16 h-28 sm:w-24 sm:h-36 rounded-xl overflow-hidden shadow-md border border-[#E8E0D2] group-hover:shadow-lg transition-all group-hover:-translate-y-1">
+                      <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] sm:text-xs font-serif text-[#3D352E] font-medium max-w-[80px] break-words leading-tight">{c.name}</p>
+                      <p className={`text-[9px] sm:text-[10px] mt-1 px-2 py-0.5 rounded-full border inline-block ${c.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
+                        {c.orientation === 'upright' ? '正位' : '逆位'}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
               <SectionDivider />
               <div className="space-y-10 mt-10 mb-16">
                 {/* Overall Trend */}

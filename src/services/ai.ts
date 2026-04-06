@@ -233,8 +233,17 @@ async function callOpenAI(cfg: AIConfig, model: string, systemPrompt: string, us
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
   const providerHint = getProviderHint(cfg);
+  
+  let actualModel = model;
+  if (isMinimax) {
+    if (model === 'MiniMax-M2.7') actualModel = 'minimax-text-01';
+    else if (model === 'MiniMax-M2.5') actualModel = 'abab6.5s-chat';
+    else if (model === 'MiniMax-M2.5-highspeed') actualModel = 'abab6.5g-chat';
+    else if (model === 'MiniMax-M2.1') actualModel = 'abab6.5-chat';
+  }
+
   // MiniMax does not support response_format: json_object
-  const body: Record<string, unknown> = { model, messages, provider: providerHint };
+  const body: Record<string, unknown> = { model: actualModel, messages, provider: providerHint };
   if (jsonMode && !isMinimax) body.response_format = { type: 'json_object' };
   const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
   if (!res.ok) {
@@ -253,8 +262,17 @@ async function callOpenAIStream(cfg: AIConfig, model: string, systemPrompt: stri
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
   const providerHint = getProviderHint(cfg);
+
+  let actualModel = model;
+  if (isMinimax) {
+    if (model === 'MiniMax-M2.7') actualModel = 'minimax-text-01';
+    else if (model === 'MiniMax-M2.5') actualModel = 'abab6.5s-chat';
+    else if (model === 'MiniMax-M2.5-highspeed') actualModel = 'abab6.5g-chat';
+    else if (model === 'MiniMax-M2.1') actualModel = 'abab6.5-chat';
+  }
+
   // MiniMax does not support response_format: json_object
-  const body: Record<string, unknown> = { model, messages, stream: true, provider: providerHint };
+  const body: Record<string, unknown> = { model: actualModel, messages, stream: true, provider: providerHint };
   if (jsonMode && !isMinimax) body.response_format = { type: 'json_object' };
   const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
   if (!res.ok) {
