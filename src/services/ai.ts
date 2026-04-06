@@ -56,20 +56,21 @@ export interface TarotReadingInput {
   positions: { name: string; card: string; orientation: string; keywords: string[] }[];
 }
 
-const MAIN_PROMPT = (input: TarotReadingInput) => `你是一位资深的塔罗占卜导师。请根据以下信息进行专业深度解读：
-问题：${input.question}
-牌阵：${input.spreadType}
-${input.isStrictMode ? "【严格模式】：给出最权威、最确定的深度剖析，结论不容置疑。" : ""}
-
-牌面详情：
-${input.positions.map((p, i) => `位置 ${i + 1} (${p.name}): ${p.card} (${p.orientation === 'upright' ? '正位' : '逆位'}) - 关键词: ${p.keywords.join(', ')}`).join('\n')}
-
-解读要求：
+const SYSTEM_PROMPT = `你是一位资深的塔罗占卜导师。
+在解读时请遵循以下极度严格的要求：
 1. 必须将抽到的每一张牌都纳入解读。结合牌面图像特征（如神态、动作、象征符号）和正逆位，深度推断其在此位置传递的明确信息。
 2. 强化牌面联系：不要孤立地看单张牌，必须分析多张牌面之间的内在联系、能量流动或矛盾冲突，给出全局观。
 3. 禁止使用"可能""也许""大概"等模糊词汇，给出具有洞察力和确定性的专业判断。
 4. 提供具体且有针对性的行动建议、心态调整方向以及需警惕的风险。
 5. 提炼一句最核心的行动指南作为结尾。`;
+
+const USER_PROMPT = (input: TarotReadingInput) => `请根据以下特定的抽牌信息进行专业深度解读：
+问题：${input.question}
+牌阵：${input.spreadType}
+${input.isStrictMode ? "【严格模式】：给出最权威、最确定的深度剖析，结论不容置疑。" : ""}
+
+牌面详情：
+${input.positions.map((p, i) => `位置 ${i + 1} (${p.name}): ${p.card} (${p.orientation === 'upright' ? '正位' : '逆位'}) - 关键词: ${p.keywords.join(', ')}`).join('\n')}`;
 
 const JSON_FORMAT_INSTRUCTION = `
 请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记）：
@@ -81,16 +82,18 @@ const JSON_FORMAT_INSTRUCTION = `
   "finalAdvice": "核心建议"
 }`;
 
-const SUPPLEMENTARY_PROMPT = (input: { question: string; card: string; orientation: string; keywords: string[] }) => {
+const SUPPLEMENTARY_SYSTEM_PROMPT = `你是一位资深的塔罗占卜导师。不要输出思考过程，直接输出结果。
+要求如下：
+1. 直接给出建议，不使用"可能""也许""大概"等模糊词汇
+2. 直接说明它对问题的启示，明确行动指导或心态调整方向
+3. 语气要像一位经验丰富的占卜师，充满确定性和洞察力`;
+
+const SUPPLEMENTARY_USER_PROMPT = (input: { question: string; card: string; orientation: string; keywords: string[] }) => {
   const orientation = input.orientation === 'upright' ? '正位' : '逆位';
   const keywordStr = input.keywords.join('、');
-  return `你是一位资深的塔罗占卜师。针对问题"${input.question}"，用户补抽了一张牌：${input.card}（${orientation}），关键词：${keywordStr}。
-
-直接基于这张牌的含义给出2-3句建议，不要包含任何思考过程或分析过程。要求：
-1. 直接给出建议，不使用"可能""也许""大概"等模糊词汇
-2. 不要解释为什么这张牌代表什么，直接说明它对问题的启示
-3. 给出明确的行动指导或心态调整方向
-4. 语气要像一位经验丰富的占卜师，充满确定性和洞察力`;
+  return `针对过去问题："${input.question}"
+用户补抽了一张牌：${input.card}（${orientation}），该牌关键词为：${keywordStr}。
+请基于这张牌的含义给出2-3句建议参考，不要包含任何思考过程或分析过程。`;
 };
 
 // ===================== Gemini Schema =====================
@@ -157,10 +160,13 @@ function mergeFragmentedJSON(text: string): Record<string, unknown> | null {
 // instead of strings for suggestions fields — join them into strings.
 function normalizeReading(obj: Record<string, unknown>): TarotReading {
   const s = obj.suggestions as Record<string, unknown> | undefined;
-  if (s) {
+  if (s && typeof s === 'object') {
     for (const key of ['actionableSteps', 'mindsetShift', 'warningSigns'] as const) {
-      if (Array.isArray(s[key])) {
-        s[key] = (s[key] as string[]).join('\n');
+      const val = s[key];
+      if (Array.isArray(val)) {
+        s[key] = val.join('\n');
+      } else if (val && typeof val === 'object') {
+        s[key] = Object.values(val).map(v => String(v)).join('\n');
       }
     }
   }
@@ -172,7 +178,7 @@ function parseAIResponse(text: string): TarotReading {
   // Also handle unclosed <think> tags (no closing </think>)
   const cleaned = text
     .replace(/<think>[\s\S]*?<\/think>/g, '')
-    .replace(/<think>[\s\S]*/g, '')
+    .replace(/<think>[\s\S]*?(<\/think>|$)/g, '')
     .trim();
 
   if (!cleaned) {
@@ -219,11 +225,11 @@ function getProviderHint(cfg: AIConfig): string {
   return cfg.provider === 'minimax' ? 'minimax' : 'openai';
 }
 
-async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean): Promise<string> {
+async function callOpenAI(cfg: AIConfig, model: string, systemPrompt: string, userPrompt: string, jsonMode: boolean): Promise<string> {
   const isMinimax = cfg.provider === 'minimax';
   const messages = [
-    { role: 'system', content: '你是一位资深的塔罗占卜导师。不要输出思考过程，直接输出结果。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
-    { role: 'user', content: prompt },
+    { role: 'system', content: systemPrompt + (jsonMode ? '\n\n' + JSON_FORMAT_INSTRUCTION : '') },
+    { role: 'user', content: userPrompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
   const providerHint = getProviderHint(cfg);
@@ -239,11 +245,11 @@ async function callOpenAI(cfg: AIConfig, model: string, prompt: string, jsonMode
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, jsonMode: boolean, onProgress: (s: string) => void): Promise<string> {
+async function callOpenAIStream(cfg: AIConfig, model: string, systemPrompt: string, userPrompt: string, jsonMode: boolean, onProgress: (s: string) => void): Promise<string> {
   const isMinimax = cfg.provider === 'minimax';
   const messages = [
-    { role: 'system', content: '你是一位资深的塔罗占卜导师。不要输出思考过程，直接输出结果。' + (jsonMode ? JSON_FORMAT_INSTRUCTION : '') },
-    { role: 'user', content: prompt },
+    { role: 'system', content: systemPrompt + (jsonMode ? '\n\n' + JSON_FORMAT_INSTRUCTION : '') },
+    { role: 'user', content: userPrompt },
   ];
   const { url, headers } = getOpenAIEndpoint(cfg);
   const providerHint = getProviderHint(cfg);
@@ -275,10 +281,10 @@ async function callOpenAIStream(cfg: AIConfig, model: string, prompt: string, js
         accumulated += content;
       } catch { /* skip malformed chunks */ }
     }
-    const len = accumulated.length;
-    if (len < 200) onProgress("正在分析牌面...");
-    else if (len < 600) onProgress("正在解读关联...");
-    else if (len < 1200) onProgress("正在生成建议...");
+    const textLen = accumulated.replace(/<think>[\s\S]*?(<\/think>|$)/g, '').length;
+    if (textLen < 200) onProgress("正在分析牌面...");
+    else if (textLen < 600) onProgress("正在解读关联...");
+    else if (textLen < 1200) onProgress("正在生成建议...");
     else onProgress("即将完成...");
   }
   return accumulated;
@@ -297,57 +303,66 @@ function geminiThinkingConfig(model: string) {
     : {};
 }
 
-async function callGemini(cfg: AIConfig, model: string, prompt: string): Promise<string> {
+async function callGemini(cfg: AIConfig, model: string, systemPrompt: string, userPrompt: string, jsonMode: boolean): Promise<string> {
   const ai = getGeminiClient(cfg.apiKey);
+  const config: any = { ...geminiThinkingConfig(model), systemInstruction: systemPrompt + (jsonMode ? '\n\n' + JSON_FORMAT_INSTRUCTION : '') };
+  if (jsonMode) {
+    config.responseMimeType = "application/json";
+    config.responseSchema = RESPONSE_SCHEMA;
+  }
   const response = await ai.models.generateContent({
-    model, contents: prompt,
-    config: { ...geminiThinkingConfig(model), responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA }
+    model, contents: userPrompt,
+    config
   });
   if (!response.text) throw new Error("AI 返回内容为空，请重试。");
   return response.text;
 }
 
-async function callGeminiStream(cfg: AIConfig, model: string, prompt: string, onProgress: (s: string) => void): Promise<string> {
+async function callGeminiStream(cfg: AIConfig, model: string, systemPrompt: string, userPrompt: string, jsonMode: boolean, onProgress: (s: string) => void): Promise<string> {
   const ai = getGeminiClient(cfg.apiKey);
+  const config: any = { ...geminiThinkingConfig(model), systemInstruction: systemPrompt + (jsonMode ? '\n\n' + JSON_FORMAT_INSTRUCTION : '') };
+  if (jsonMode) {
+    config.responseMimeType = "application/json";
+    config.responseSchema = RESPONSE_SCHEMA;
+  }
   const response = await ai.models.generateContentStream({
-    model, contents: prompt,
-    config: { ...geminiThinkingConfig(model), responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA }
+    model, contents: userPrompt,
+    config
   });
   let accumulated = '';
   for await (const chunk of response) {
     accumulated += chunk.text || '';
-    const len = accumulated.length;
-    if (len < 200) onProgress("正在分析牌面...");
-    else if (len < 600) onProgress("正在解读关联...");
-    else if (len < 1200) onProgress("正在生成建议...");
+    const textLen = accumulated.replace(/<think>[\s\S]*?(<\/think>|$)/g, '').length;
+    if (textLen < 200) onProgress("正在分析牌面...");
+    else if (textLen < 600) onProgress("正在解读关联...");
+    else if (textLen < 1200) onProgress("正在生成建议...");
     else onProgress("即将完成...");
   }
   return accumulated;
 }
 
-async function callGeminiLight(cfg: AIConfig, model: string, prompt: string): Promise<string> {
+async function callGeminiLight(cfg: AIConfig, model: string, systemPrompt: string, userPrompt: string): Promise<string> {
   const ai = getGeminiClient(cfg.apiKey);
-  const response = await ai.models.generateContent({ model, contents: prompt });
+  const config: any = { systemInstruction: systemPrompt };
+  const response = await ai.models.generateContent({ model, contents: userPrompt, config });
   return response.text || "暂无补充建议";
 }
 
 // ===================== Public API =====================
 export async function interpretTarot(input: TarotReadingInput): Promise<TarotReading> {
   const cfg = getConfig();
-  const prompt = MAIN_PROMPT(input);
   const text = cfg.provider === 'gemini'
-    ? await callGemini(cfg, cfg.model, prompt)
-    : await callOpenAI(cfg, cfg.model, prompt, true); // minimax uses OpenAI-compatible API
+    ? await callGemini(cfg, cfg.model, SYSTEM_PROMPT, USER_PROMPT(input), true)
+    : await callOpenAI(cfg, cfg.model, SYSTEM_PROMPT, USER_PROMPT(input), true); // minimax uses OpenAI-compatible API
   return parseAIResponse(text);
 }
 
 export async function interpretTarotStream(input: TarotReadingInput, onProgress: (stage: string) => void): Promise<TarotReading> {
   const cfg = getConfig();
   onProgress("正在连接灵感...");
-  const prompt = MAIN_PROMPT(input);
   const text = cfg.provider === 'gemini'
-    ? await callGeminiStream(cfg, cfg.model, prompt, onProgress)
-    : await callOpenAIStream(cfg, cfg.model, prompt, true, onProgress); // minimax uses OpenAI-compatible API
+    ? await callGeminiStream(cfg, cfg.model, SYSTEM_PROMPT, USER_PROMPT(input), true, onProgress)
+    : await callOpenAIStream(cfg, cfg.model, SYSTEM_PROMPT, USER_PROMPT(input), true, onProgress); // minimax uses OpenAI-compatible API
   onProgress("解读完成");
   return parseAIResponse(text);
 }
@@ -356,10 +371,9 @@ export async function interpretSupplementary(input: {
   question: string; card: string; orientation: string; keywords: string[];
 }): Promise<{ summary: string }> {
   const cfg = getConfig();
-  const prompt = SUPPLEMENTARY_PROMPT(input);
   const text = cfg.provider === 'gemini'
-    ? await callGeminiLight(cfg, cfg.modelLight, prompt)
-    : await callOpenAI(cfg, cfg.modelLight, prompt, false); // minimax uses OpenAI-compatible API
+    ? await callGeminiLight(cfg, cfg.modelLight, SUPPLEMENTARY_SYSTEM_PROMPT, SUPPLEMENTARY_USER_PROMPT(input))
+    : await callOpenAI(cfg, cfg.modelLight, SUPPLEMENTARY_SYSTEM_PROMPT, SUPPLEMENTARY_USER_PROMPT(input), false); // minimax uses OpenAI-compatible API
 
   // Strip <think>...</think> blocks from the response
   const cleaned = text
