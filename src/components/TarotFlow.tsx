@@ -659,7 +659,13 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
           const cardCount = cards.length;
 
           return (
-          <motion.div key="result" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="space-y-0">
+          <motion.div key="result" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="space-y-0 relative">
+            
+            {/* === Ambient Background Glow === */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10 mix-blend-luminosity">
+              <motion.div animate={{ rotate: 360, scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 80, ease: "linear" }}
+                className="absolute top-[-20%] left-[10%] w-[120%] h-[120%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#C9A86A]/[0.04] via-transparent to-transparent blur-3xl opacity-60 rounded-full" />
+            </div>
 
             {/* === Section A: Title === */}
             <div className="text-center space-y-5 mb-14">
@@ -673,7 +679,9 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 「{session.question}」
               </motion.p>
               <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                className="text-3xl sm:text-4xl font-serif leading-tight">{reading.summary}</motion.h2>
+                className="text-3xl sm:text-4xl md:text-5xl font-serif leading-relaxed tracking-wide bg-gradient-to-r from-[#6b5f54] via-[#C9A86A] to-[#6b5f54] bg-clip-text text-transparent drop-shadow-sm pb-2">
+                {reading.summary}
+              </motion.h2>
             </div>
 
             {/* === Card Strip: always visible in result step === */}
@@ -683,13 +691,15 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                   <motion.div key={`recap-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + idx * 0.08 }}
                     className="flex flex-col items-center gap-1.5 group cursor-default">
                     {/* Position label */}
-                    <p className="text-[8px] sm:text-[10px] text-[#C9A86A] font-serif tracking-wider uppercase">
+                    <p className="text-[8px] sm:text-[10px] text-[#C9A86A] font-serif tracking-widest uppercase drop-shadow-sm mb-1">
                       {SPREADS[spreadType].positions[idx]}
                     </p>
-                    <div className="relative w-14 h-24 sm:w-20 sm:h-32 rounded-lg sm:rounded-xl overflow-hidden shadow-md border border-[#E8E0D2] group-hover:shadow-lg group-hover:shadow-[#C9A86A]/15 transition-all group-hover:-translate-y-1 group-hover:border-[#C9A86A]/40">
-                      <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
-                    </div>
+                    <motion.div 
+                      animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 4 + idx * 0.6, ease: "easeInOut", delay: idx * 0.3 }}
+                      className={`relative w-14 h-24 sm:w-20 sm:h-32 rounded-lg sm:rounded-xl overflow-hidden shadow-md group-hover:shadow-2xl group-hover:shadow-[#C9A86A]/20 transition-all duration-500 group-hover:border-[#C9A86A]/60 ${c.orientation === 'reversed' ? 'border border-[#5C5349]/30 shadow-[#5C5349]/10' : 'border border-[#C9A86A]/40 shadow-[#C9A86A]/15'}`}>
+                      <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
+                      <div className={`absolute inset-0 pointer-events-none mix-blend-overlay ${c.orientation === 'reversed' ? 'bg-gradient-to-t from-black/30 to-transparent' : 'bg-gradient-to-t from-[#C9A86A]/20 to-transparent'}`} />
+                    </motion.div>
                     <div className="text-center">
                       <p className="text-[9px] sm:text-[11px] font-serif text-[#3D352E] font-medium max-w-[72px] break-words leading-tight">{c.name}</p>
                       <p className={`text-[8px] sm:text-[9px] mt-0.5 px-1.5 py-0.5 rounded-full border inline-block ${c.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
@@ -843,51 +853,66 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
 
               <div className="space-y-10 mt-4 mb-16">
                 {/* Overall Trend */}
-                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                  className="p-6 sm:p-8 rounded-2xl bg-[#FFFDF9] border border-[#E8E0D2]">
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp size={16} className="text-[#C9A86A]" />
-                    <h3 className="text-lg font-serif">整体趋势</h3>
+                <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="p-8 sm:p-10 rounded-2xl bg-white/40 backdrop-blur-md border border-white/60 shadow-xl shadow-black/5 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#C9A86A]/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-1000" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A86A]/20 to-transparent flex items-center justify-center border border-[#C9A86A]/20">
+                        <TrendingUp size={16} className="text-[#C9A86A]" />
+                      </div>
+                      <h3 className="text-xl font-serif text-[#3D352E] tracking-wide">整体趋势</h3>
+                    </div>
+                    <p className="text-[#5C5349] leading-loose text-[15px]">{reading.overallTrend}</p>
                   </div>
-                  <p className="text-[#5C5349] leading-[1.8] text-[14px]">{reading.overallTrend}</p>
                 </motion.div>
 
                 {/* Three Suggestion Columns */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-                    className="p-5 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] border-t-2 border-t-emerald-500/50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <ArrowRight size={13} className="text-emerald-400" />
-                      <h4 className="text-xs font-medium text-emerald-400 uppercase tracking-widest">行动</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Action */}
+                  <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
+                    className="p-6 rounded-2xl bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-black/5 hover:bg-white/50 transition-colors flex flex-col items-center text-center relative overflow-hidden group">
+                    <div className="w-full absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-emerald-400/0 via-emerald-400 to-emerald-400/0 opacity-70" />
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 text-emerald-500 group-hover:scale-110 transition-transform duration-500">
+                      <ArrowRight size={16} />
                     </div>
-                    <p className="text-[#5C5349] text-[13px] leading-[1.7]">{reading.suggestions?.actionableSteps || '暂无建议'}</p>
+                    <h4 className="text-[11px] font-medium text-emerald-600 uppercase tracking-[0.25em] mb-4">行动</h4>
+                    <p className="text-[#5C5349] text-[14px] leading-relaxed font-light">{reading.suggestions?.actionableSteps || '暂无建议'}</p>
                   </motion.div>
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-                    className="p-5 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] border-t-2 border-t-blue-400/50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <RefreshCw size={13} className="text-blue-400" />
-                      <h4 className="text-xs font-medium text-blue-400 uppercase tracking-widest">心态</h4>
+
+                  {/* Mindset */}
+                  <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+                    className="p-6 rounded-2xl bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-black/5 hover:bg-white/50 transition-colors flex flex-col items-center text-center relative overflow-hidden group">
+                    <div className="w-full absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-400/0 via-blue-400 to-blue-400/0 opacity-70" />
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 text-blue-500 group-hover:scale-110 transition-transform duration-500">
+                      <RefreshCw size={16} />
                     </div>
-                    <p className="text-[#5C5349] text-[13px] leading-[1.7]">{reading.suggestions?.mindsetShift || '暂无建议'}</p>
+                    <h4 className="text-[11px] font-medium text-blue-600 uppercase tracking-[0.25em] mb-4">心态</h4>
+                    <p className="text-[#5C5349] text-[14px] leading-relaxed font-light">{reading.suggestions?.mindsetShift || '暂无建议'}</p>
                   </motion.div>
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
-                    className="p-5 rounded-xl bg-[#FFFDF9] border border-[#E8E0D2] border-t-2 border-t-amber-400/50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertCircle size={13} className="text-amber-400" />
-                      <h4 className="text-xs font-medium text-amber-400 uppercase tracking-widest">警示</h4>
+
+                  {/* Warning */}
+                  <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+                    className="p-6 rounded-2xl bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-black/5 hover:bg-white/50 transition-colors flex flex-col items-center text-center relative overflow-hidden group">
+                    <div className="w-full absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-amber-400/0 via-amber-400 to-amber-400/0 opacity-70" />
+                    <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 text-amber-500 group-hover:scale-110 transition-transform duration-500">
+                      <AlertCircle size={16} />
                     </div>
-                    <p className="text-[#5C5349] text-[13px] leading-[1.7]">{reading.suggestions?.warningSigns || '暂无警示'}</p>
+                    <h4 className="text-[11px] font-medium text-amber-600 uppercase tracking-[0.25em] mb-4">警示</h4>
+                    <p className="text-[#5C5349] text-[14px] leading-relaxed font-light">{reading.suggestions?.warningSigns || '暂无警示'}</p>
                   </motion.div>
                 </div>
 
                 {/* Core Advice */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}
-                  className="p-6 sm:p-8 rounded-2xl bg-[#C9A86A]/10 border border-[#C9A86A]/20 flex flex-col gap-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Sparkles size={14} className="text-[#C9A86A]" />
-                    <h3 className="text-xs font-medium text-[#C9A86A] uppercase tracking-widest">核心建议</h3>
+                <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
+                  className="p-8 sm:p-12 mt-6 rounded-3xl bg-gradient-to-b from-[#C9A86A]/10 to-transparent border border-[#C9A86A]/20 flex flex-col items-center gap-6 text-center relative overflow-hidden group">
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#C9A86A]/5 to-transparent mix-blend-multiply pointer-events-none" />
+                  <div className="flex items-center justify-center gap-3">
+                    <Sparkles size={16} className="text-[#C9A86A]" />
+                    <h3 className="text-[11px] font-semibold text-[#C9A86A] uppercase tracking-[0.3em]">核心建议</h3>
+                    <Sparkles size={16} className="text-[#C9A86A]" />
                   </div>
-                  <p className="text-[#3D352E] text-lg sm:text-xl font-serif leading-[1.6]">
+                  <p className="text-[#3D352E] text-xl sm:text-2xl font-serif leading-relaxed relative z-10 drop-shadow-sm">
                     {reading.finalAdvice}
                   </p>
                 </motion.div>
