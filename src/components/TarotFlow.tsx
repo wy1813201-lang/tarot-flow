@@ -814,13 +814,19 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
                 transition={{ duration: 0.6 }}
               >
               
-              {/* === Display all 5 (or selected number) cards before analysis === */}
+              {/* === Display all selected cards with position labels === */}
               <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mt-2 mb-8">
                 {cards.map((c, idx) => (
                   <motion.div key={`recap-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + idx * 0.1 }}
                     className="flex flex-col items-center gap-2 group">
-                    <div className="relative w-16 h-28 sm:w-24 sm:h-36 rounded-xl overflow-hidden shadow-md border border-[#E8E0D2] group-hover:shadow-lg transition-all group-hover:-translate-y-1">
+                    {/* Position label */}
+                    <p className="text-[9px] sm:text-[10px] text-[#C9A86A] font-serif tracking-wider uppercase mb-0.5">
+                      {SPREADS[spreadType].positions[idx]}
+                    </p>
+                    <div className="relative w-16 h-28 sm:w-24 sm:h-36 rounded-xl overflow-hidden shadow-md border border-[#E8E0D2] group-hover:shadow-lg group-hover:shadow-[#C9A86A]/15 transition-all group-hover:-translate-y-1.5 group-hover:border-[#C9A86A]/40">
                       <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
+                      {/* Subtle golden overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#C9A86A]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     </div>
                     <div className="text-center">
                       <p className="text-[10px] sm:text-xs font-serif text-[#3D352E] font-medium max-w-[80px] break-words leading-tight">{c.name}</p>

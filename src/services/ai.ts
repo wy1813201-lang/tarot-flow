@@ -31,7 +31,7 @@ function getConfig(): AIConfig {
   const defaults: Record<AIProvider, { baseUrl: string; model: string; modelLight: string }> = {
     gemini: { baseUrl: '', model: 'gemini-2.5-pro-preview-05-06', modelLight: 'gemini-2.0-flash' },
     openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o', modelLight: 'gpt-4o-mini' },
-    minimax: { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M2.5', modelLight: 'MiniMax-M2.5' },
+    minimax: { baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M2.7', modelLight: 'MiniMax-M2.5' },
   };
   const d = defaults[provider] || defaults.openai;
 
@@ -56,30 +56,45 @@ export interface TarotReadingInput {
   positions: { name: string; card: string; orientation: string; keywords: string[] }[];
 }
 
-const SYSTEM_PROMPT = `你是一位资深的塔罗占卜导师。
-在解读时请遵循以下极度严格的要求：
-1. 必须将抽到的每一张牌都纳入解读。结合牌面图像特征（如神态、动作、象征符号）和正逆位，深度推断其在此位置传递的明确信息。
-2. 强化牌面联系：不要孤立地看单张牌，必须分析多张牌面之间的内在联系、能量流动或矛盾冲突，给出全局观。
-3. 禁止使用"可能""也许""大概"等模糊词汇，给出具有洞察力和确定性的专业判断。
-4. 提供具体且有针对性的行动建议、心态调整方向以及需警惕的风险。
-5. 提炼一句最核心的行动指南作为结尾。`;
+const SYSTEM_PROMPT = `你是一位兼修韦特塔罗与荣格心理学的资深占卜导师，拥有20年实战经验。你的解读风格：洞察犀利、斩钉截铁、文字优美且极具画面感。
 
-const USER_PROMPT = (input: TarotReadingInput) => `请根据以下特定的抽牌信息进行专业深度解读：
-问题：${input.question}
-牌阵：${input.spreadType}
-${input.isStrictMode ? "【严格模式】：给出最权威、最确定的深度剖析，结论不容置疑。" : ""}
+## 解读铁律
+1. **牌面图像分析**：每张牌的解读必须从其经典韦特牌面图像入手——描述画面中人物的姿态、神情、手持之物、背景场景中的象征符号（如水流、山脉、天空颜色、植物等），再结合正/逆位推断其在此牌位传递的确定性信息。
+2. **跨牌能量编织**：绝对禁止孤立解读单张牌。必须分析牌与牌之间的能量传导、对话与冲突。例如："第一张牌的X元素在第三张牌中得到了呼应/被颠覆"。至少点明2组跨牌关联。
+3. **语言确定性**：严禁使用"可能""也许""大概""或许"等模糊词汇。所有判断必须笃定、权威，如同宣告命运的裁决。
+4. **行动力导向**：建议部分必须给出可以在本周内立即执行的具体行动步骤，而非泛泛而谈的"保持积极心态"。
+5. **核心金句**：结尾必须提炼出一句极具穿透力和记忆点的行动指南（不超过25字），用来"钉"在问卜者心里。`;
 
-牌面详情：
-${input.positions.map((p, i) => `位置 ${i + 1} (${p.name}): ${p.card} (${p.orientation === 'upright' ? '正位' : '逆位'}) - 关键词: ${p.keywords.join(', ')}`).join('\n')}`;
+const USER_PROMPT = (input: TarotReadingInput) => `## 占卜请求
+**问卜者的问题**：「${input.question}」
+**牌阵**：${input.spreadType}
+${input.isStrictMode ? "\n⚠️ 【严格模式已开启】：给出最权威、最不留余地的深度剖析。结论如同铁板钉钉，不容置疑。" : ""}
+
+## 抽牌结果
+${input.positions.map((p, i) => `### 第${i + 1}张 · 牌位「${p.name}」
+- 牌面：**${p.card}**（${p.orientation === 'upright' ? '✅ 正位' : '🔄 逆位'}）
+- 关键词：${p.keywords.join('、')}`).join('\n\n')}
+
+请根据以上牌面给出深度、专业、确定的解读。每张牌的解读需要描述牌面图像的关键视觉元素。`;
 
 const JSON_FORMAT_INSTRUCTION = `
-请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记）：
+请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记，不要包含思考过程）：
 {
-  "summary": "简版结论/总评",
-  "detailedInterpretations": [{"position": "位置名", "card": "牌名", "meaning": "详细解读"}],
-  "overallTrend": "整体趋势分析",
-  "suggestions": {"actionableSteps": "具体行动建议", "mindsetShift": "心态调整建议", "warningSigns": "潜在风险/警示"},
-  "finalAdvice": "核心建议"
+  "summary": "一句话核心总评（20-40字，概括全局命运走向）",
+  "detailedInterpretations": [
+    {
+      "position": "牌位名称",
+      "card": "牌面名称",
+      "meaning": "详细解读（150-300字）：先描述牌面图像的关键视觉元素和象征，再结合牌位含义给出确定性判断，最后点出此牌与其他牌面的能量关联"
+    }
+  ],
+  "overallTrend": "整体趋势分析（200-400字）：编织所有牌面的能量交汇，揭示问题的深层脉络和命运走向",
+  "suggestions": {
+    "actionableSteps": "3条可在本周内立即执行的具体行动建议（每条一句话，用序号分隔）",
+    "mindsetShift": "心态转变的核心方向（100-150字），指出当前思维盲区",
+    "warningSigns": "必须警惕的2-3个具体风险信号或陷阱"
+  },
+  "finalAdvice": "一句核心行动指南金句（不超过25字，极具穿透力）"
 }`;
 
 const SUPPLEMENTARY_SYSTEM_PROMPT = `你是一位资深的塔罗占卜导师。不要输出思考过程，直接输出结果。
@@ -158,16 +173,42 @@ function mergeFragmentedJSON(text: string): Record<string, unknown> | null {
 
 // Normalize parsed AI response: some models (e.g. MiniMax) return arrays
 // instead of strings for suggestions fields — join them into strings.
+// Also handles nested objects in detailedInterpretations.
 function normalizeReading(obj: Record<string, unknown>): TarotReading {
+  // Normalize suggestions
   const s = obj.suggestions as Record<string, unknown> | undefined;
   if (s && typeof s === 'object') {
     for (const key of ['actionableSteps', 'mindsetShift', 'warningSigns'] as const) {
       const val = s[key];
       if (Array.isArray(val)) {
-        s[key] = val.join('\n');
+        s[key] = val.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join('\n');
       } else if (val && typeof val === 'object') {
-        s[key] = Object.values(val).map(v => String(v)).join('\n');
+        s[key] = Object.values(val).map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join('\n');
       }
+    }
+  }
+  // Normalize detailedInterpretations — some models nest meaning as objects
+  const di = obj.detailedInterpretations;
+  if (Array.isArray(di)) {
+    for (const item of di) {
+      if (item && typeof item === 'object') {
+        const rec = item as Record<string, unknown>;
+        if (rec.meaning && typeof rec.meaning === 'object') {
+          // Flatten object meaning into readable string
+          const parts = Object.entries(rec.meaning as Record<string, unknown>)
+            .map(([k, v]) => `${k}：${typeof v === 'object' ? JSON.stringify(v) : String(v)}`);
+          rec.meaning = parts.join('\n');
+        }
+      }
+    }
+  }
+  // Normalize string fields that might be objects
+  for (const key of ['summary', 'overallTrend', 'finalAdvice'] as const) {
+    const val = obj[key];
+    if (val && typeof val === 'object') {
+      obj[key] = Array.isArray(val)
+        ? val.map(v => String(v)).join(' ')
+        : Object.values(val).map(v => String(v)).join(' ');
     }
   }
   return obj as unknown as TarotReading;
