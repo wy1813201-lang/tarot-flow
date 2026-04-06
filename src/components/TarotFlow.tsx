@@ -684,6 +684,19 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
               </motion.h2>
             </div>
 
+            {/* === Event Portrait (Optional but highly immersive) === */}
+            {reading.eventPortrait && (
+              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                className="max-w-2xl mx-auto mb-14 relative px-8 py-10 bg-white/30 backdrop-blur-md rounded-3xl border border-white/50 shadow-inner shadow-black/5">
+                <div className="absolute -top-4 -left-2 text-7xl text-[#C9A86A]/20 font-serif leading-none">“</div>
+                <div className="absolute -bottom-8 -right-2 text-7xl text-[#C9A86A]/20 font-serif leading-none">”</div>
+                <p className="relative z-10 text-[15px] sm:text-[17px] text-[#5C5349] leading-loose font-serif text-justify tracking-wide mix-blend-multiply">
+                  {reading.eventPortrait}
+                </p>
+		<div className="absolute top-0 right-0 w-32 h-32 bg-[#C9A86A]/5 rounded-full blur-2xl pointer-events-none" />
+              </motion.div>
+            )}
+
             {/* === Card Strip: always visible in result step === */}
             <div className="mb-8">
               <div className="flex flex-wrap justify-center gap-3 sm:gap-5">

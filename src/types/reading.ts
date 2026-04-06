@@ -12,6 +12,7 @@ export interface ReadingSuggestions {
 
 export interface TarotReading {
   summary: string;
+  eventPortrait?: string;
   detailedInterpretations: CardInterpretation[];
   overallTrend: string;
   suggestions: ReadingSuggestions;

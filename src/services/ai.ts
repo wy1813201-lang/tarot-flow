@@ -60,10 +60,11 @@ const SYSTEM_PROMPT = `你是一位兼修韦特塔罗与荣格心理学的资深
 
 ## 解读铁律
 1. **牌面图像分析**：每张牌的解读必须从其经典韦特牌面图像入手——描述画面中人物的姿态、神情、手持之物、背景场景中的象征符号（如水流、山脉、天空颜色、植物等），再结合正/逆位推断其在此牌位传递的确定性信息。
-2. **跨牌能量编织**：绝对禁止孤立解读单张牌。必须分析牌与牌之间的能量传导、对话与冲突。例如："第一张牌的X元素在第三张牌中得到了呼应/被颠覆"。至少点明2组跨牌关联。
-3. **语言确定性**：严禁使用"可能""也许""大概""或许"等模糊词汇。所有判断必须笃定、权威，如同宣告命运的裁决。
-4. **行动力导向**：建议部分必须给出可以在本周内立即执行的具体行动步骤，而非泛泛而谈的"保持积极心态"。
-5. **核心金句**：结尾必须提炼出一句极具穿透力和记忆点的行动指南（不超过25字），用来"钉"在问卜者心里。`;
+2. **事件画像合成 (Event Portrait)**：在拆解各牌之前，必须首先将所有抽出的牌面核心视觉元素融合，像电影导演一样脑补并勾勒出一幅具象化、具有沉浸感的统一事态画面。
+3. **跨牌能量编织**：绝对禁止孤立解读单张牌。必须分析牌与牌之间的能量传导、对话与冲突。例如："第一张牌的X元素在第三张牌中得到了呼应/被颠覆"。至少点明2组跨牌关联。
+4. **语言确定性**：严禁使用"可能""也许""大概""或许"等模糊词汇。所有判断必须笃定、权威，如同宣告命运的裁决。
+5. **行动力导向**：建议部分必须给出可以在本周内立即执行的具体行动步骤，而非泛泛而谈的"保持积极心态"。
+6. **核心金句**：结尾必须提炼出一句极具穿透力和记忆点的行动指南（不超过25字），用来"钉"在问卜者心里。`;
 
 const USER_PROMPT = (input: TarotReadingInput) => `## 占卜请求
 **问卜者的问题**：「${input.question}」
@@ -81,6 +82,7 @@ const JSON_FORMAT_INSTRUCTION = `
 请严格按照以下 JSON 格式返回（不要包含 markdown 代码块标记，不要包含思考过程）：
 {
   "summary": "一句话核心总评（20-40字，概括全局命运走向）",
+  "eventPortrait": "事件画像（80-150字）：基于抽取的牌面视觉元素，融合为一幅高度具象化、富有电影画面感和沉浸感的统一事件场景。例如描述当事人仿佛身处怎样的环境，面临什么意象的冲击。",
   "detailedInterpretations": [
     {
       "position": "牌位名称",
@@ -116,12 +118,13 @@ const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     summary: { type: Type.STRING },
+    eventPortrait: { type: Type.STRING },
     detailedInterpretations: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { position: { type: Type.STRING }, card: { type: Type.STRING }, meaning: { type: Type.STRING } } } },
     overallTrend: { type: Type.STRING },
     suggestions: { type: Type.OBJECT, properties: { actionableSteps: { type: Type.STRING }, mindsetShift: { type: Type.STRING }, warningSigns: { type: Type.STRING } }, required: ["actionableSteps", "mindsetShift", "warningSigns"] },
     finalAdvice: { type: Type.STRING }
   },
-  required: ["summary", "detailedInterpretations", "overallTrend", "suggestions", "finalAdvice"]
+  required: ["summary", "eventPortrait", "detailedInterpretations", "overallTrend", "suggestions", "finalAdvice"]
 };
 
 // ===================== Parse =====================
