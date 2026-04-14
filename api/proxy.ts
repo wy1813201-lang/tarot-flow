@@ -1,13 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const AI_API_KEY = process.env.AI_API_KEY || '';
-const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
-const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || '';
-const MINIMAX_BASE_URL = 'https://api.minimaxi.com/v1';
+const AI_API_KEY = process.env.AI_API_KEY || process.env.VITE_AI_API_KEY || '';
+const AI_BASE_URL = process.env.AI_BASE_URL || process.env.VITE_AI_BASE_URL || 'https://api.openai.com/v1';
+const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY || process.env.VITE_MINIMAX_API_KEY || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
 
 function getProviderConfig(provider?: string) {
-  if (provider === 'minimax' && MINIMAX_API_KEY) {
-    return { apiKey: MINIMAX_API_KEY, baseUrl: MINIMAX_BASE_URL };
+  if (provider === 'minimax') {
+    return { apiKey: MINIMAX_API_KEY || AI_API_KEY, baseUrl: 'https://api.minimaxi.com/v1' };
+  }
+  if (provider === 'gemini') {
+    // Gemini OpenAI compatible endpoint
+    return { apiKey: GEMINI_API_KEY || AI_API_KEY, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' };
   }
   return { apiKey: AI_API_KEY, baseUrl: AI_BASE_URL };
 }
@@ -47,7 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
 
-      // Use Node.js-compatible streaming (works in Vercel)
       const reader = upstream.body!.getReader();
       const decoder = new TextDecoder();
       try {

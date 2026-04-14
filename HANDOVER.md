@@ -47,7 +47,8 @@
 - **`/src/services/ai.ts`**: AI 解析器大本营（接手后请优先看这里，Prompt和重试容错全在其中）。
 - **`/api/proxy.ts`**: 面向 Vercel 部署环境的核心跨域代理函数。
 - **`/src/types/reading.ts`**: 规定了 AI 必须吐出的 `TarotReading` 数据结构的 Typescript 接口规范。
-- **`/src/components/TarotFlow.tsx`**: 整个抽取、洗牌和最终结果渲染流水线的心脏区域。
+- **`/src/components/TarotFlow.tsx`**: 整个架构的调度中心（Orchestrator），负责状态流转。
+- **`/src/components/TarotFlow/SetupForm.tsx` & `FlipStage.tsx` & `ResultPage.tsx`**: 抽取自原主文件的三个核心组件模块，使得代码结构更易维护。
 - **`.browserslistrc`**: 为缓解本地权限查找报错注入的环境配置。
 
 ---

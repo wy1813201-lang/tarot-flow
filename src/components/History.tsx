@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { SPREADS } from '../constants/tarot';
 import { TarotReading } from '../types/reading';
 
@@ -12,9 +12,14 @@ interface SessionRecord {
   hash: string;
   reading?: TarotReading;
   createdAt: string;
+  shuffledDeck?: any[];
+  orientations?: any[];
+  chosenNumbers?: number[];
+  supplementaryCards?: any[];
+  deepAnalysis?: Record<string, string> | null;
 }
 
-export default function History() {
+export default function History({ onReplay }: { onReplay?: (record: SessionRecord) => void }) {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -64,6 +69,8 @@ export default function History() {
                   {new Date(session.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <span>{SPREADS[session.spreadType as keyof typeof SPREADS]?.name || session.spreadType}</span>
+                {session.supplementaryCards && session.supplementaryCards.length > 0 && <span>{session.supplementaryCards.length}张补牌</span>}
+                {session.deepAnalysis && <span className="text-violet-600">深度分析</span>}
                 {session.isStrictMode && <span className="text-[#C9A86A]">严格模式</span>}
               </div>
             </div>
@@ -105,7 +112,14 @@ export default function History() {
                   </div>
                 )}
 
-                <div className="pt-2 flex justify-end">
+                <div className="pt-2 flex justify-between items-center">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onReplay && onReplay(session); }}
+                    className="text-xs px-3 py-1.5 rounded-full bg-[#C9A86A] text-white hover:bg-[#B8944F] flex items-center gap-1.5 transition-colors shadow-sm"
+                  >
+                    <Sparkles size={12} />
+                    <span>沉浸式重温</span>
+                  </button>
                   <button
                     onClick={() => setDetailId(detailId === session.id ? null : session.id)}
                     className="text-xs text-[#C9A86A] flex items-center gap-1 hover:underline"

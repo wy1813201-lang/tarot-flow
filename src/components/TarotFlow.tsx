@@ -1,80 +1,122 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SPREADS, SpreadType } from '../constants/tarot';
 import { shuffleDeck, generateHash, getCardsFromSelection, TarotSession } from '../lib/tarotLogic';
-import { interpretTarotStream, interpretSupplementary } from '../services/ai';
+import { interpretTarotStream, interpretSupplementary, interpretDeepAnalysis, DeepAnalysis } from '../services/ai';
 import { TarotReading } from '../types/reading';
-import { ArrowRight, ArrowLeft, RefreshCw, Hash, CheckCircle2, Loader2, Sparkles, ChevronRight, ShieldAlert, Plus, Zap, Columns, Layout, Heart, Briefcase, Calendar, Compass, AlertCircle, TrendingUp, Dice5 } from 'lucide-react';
-
+import { ArrowRight, ArrowLeft, RefreshCw, Hash, Loader2, Sparkles, ChevronRight, Target, Shield, Eye, Wind, Brain, Clock, Plus, AlertCircle, Dice5, Download, TrendingUp } from 'lucide-react';
+import { SetupForm } from './TarotFlow/SetupForm';
+import { FlipStage } from './TarotFlow/FlipStage';
+const ResultPage = lazy(() => import('./TarotFlow/ResultPage').then(m => ({ default: m.ResultPage })));
 type Step = 'setup' | 'shuffle' | 'select' | 'flip' | 'result';
 
-// Card suit styling based on card index in the deck
-function getCardSuitStyle(cardName: string) {
-  const suits: Record<string, { gradient: string; label: string; symbol: string }> = {
-    '权杖': { gradient: 'from-amber-100 to-[#F3EEE6]', label: 'Wands', symbol: '🔥' },
-    '圣杯': { gradient: 'from-blue-100 to-[#F3EEE6]', label: 'Cups', symbol: '💧' },
-    '宝剑': { gradient: 'from-slate-200 to-[#F3EEE6]', label: 'Swords', symbol: '⚔️' },
-    '星币': { gradient: 'from-emerald-100 to-[#F3EEE6]', label: 'Pentacles', symbol: '✨' },
-  };
-  for (const [key, style] of Object.entries(suits)) {
-    if (cardName.includes(key)) return style;
-  }
-  // Major Arcana
-  return { gradient: 'from-[#E7D7B0] to-[#F3EEE6]', label: 'Major Arcana', symbol: '🌟' };
-}
+import { getExcerpt } from '../lib/utils';
 
-function SectionDivider() {
-  return (
-    <div className="flex items-center gap-4 py-2">
-      <div className="flex-1 h-px bg-[#E8E0D2]" />
-      <Sparkles size={10} className="text-[#C9A86A]" />
-      <div className="flex-1 h-px bg-[#E8E0D2]" />
-    </div>
-  );
-}
 
-const SUGGESTED_QUESTIONS = [
-  { category: "事业", questions: ["今年我的事业发展趋势如何？", "我是否应该接受这份新的工作机会？", "如何提升职场人际关系？"] },
-  { category: "感情", questions: ["我和TA未来的感情走向如何？", "我什么时候能遇到正缘？", "这段关系中的阻碍是什么？"] },
-  { category: "财富", questions: ["近期的财运状况如何？", "这项投资是否会有好的回报？"] },
-  { category: "综合", questions: ["我目前最需要关注的是什么？", "本周的整体运势如何？"] },
+
+
+const ASTRO_PHRASES = [
+  "正在触碰卡牌的灵魂边界...",
+  "星轨交汇，命运线开始显影...",
+  "倾听古老神谕的低语...",
+  "正在穿越意象的迷雾...",
+  "即将凝结最终的命运裁决..."
 ];
+
+const ALL_CARD_NUMBERS = Array.from({ length: 78 }, (_, i) => i + 1);
+function pickRandomUniqueNumbers(pool: number[], count: number): number[] {
+  const copy = [...pool];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, Math.min(count, copy.length));
+}
+
+// SUGGESTED_QUESTIONS moved to SetupForm.tsx
 
 interface SupplementaryCard {
   name: string;
   nameEn: string;
   orientation: string;
   keywords: string[];
-  interpretation: string;
+  interpretation: string; // legacy fallback
+  coreMessage: string;
+  advice: string;
+  connection: string;
+  portraitContinuation: string;
+  deepReading: string;
+  energyShift: string;
   chosenNumber: number;
+  imageUrl: string;
+  contextType?: 'overall' | 'card' | 'general';
+  contextLabel?: string;
 }
 
-export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState<Step>('setup');
-  const [question, setQuestion] = useState('');
-  const [spreadType, setSpreadType] = useState<SpreadType>('three');
-  const [isStrictMode, setIsStrictMode] = useState(false);
-  const [session, setSession] = useState<TarotSession | null>(null);
-  const [chosenNumbers, setChosenNumbers] = useState<number[]>([]);
-  const [reading, setReading] = useState<TarotReading | null>(null);
+interface SupplementaryCardData {
+  name: string; nameEn: string; orientation: string; keywords: string[];
+  imageUrl: string; portraitContinuation: string; deepReading: string; energyShift: string;
+  contextType?: string; contextLabel?: string;
+}
+
+interface StoredSessionRecord {
+  id: string;
+  question: string;
+  spreadType: string;
+  isStrictMode: boolean;
+  hash: string;
+  reading?: TarotReading;
+  createdAt: string;
+  shuffledDeck?: number[];
+  orientations?: ("upright" | "reversed")[];
+  chosenNumbers?: number[];
+  supplementaryCards?: SupplementaryCard[];
+  deepAnalysis?: DeepAnalysis | null;
+}
+
+// (splitActionableSteps and getExcerpt moved to utils.ts)
+
+
+
+
+
+export default function TarotFlow({ onComplete, initialSessionRecord }: { onComplete: () => void, initialSessionRecord?: StoredSessionRecord | null }) {
+  const [step, setStep] = useState<Step>(initialSessionRecord?.reading ? 'result' : 'setup');
+  const [question, setQuestion] = useState(initialSessionRecord?.question || '');
+  const [spreadType, setSpreadType] = useState<SpreadType>((initialSessionRecord?.spreadType as SpreadType) || 'three');
+  const [isStrictMode, setIsStrictMode] = useState(initialSessionRecord?.isStrictMode || false);
+  const [session, setSession] = useState<TarotSession | null>(
+    initialSessionRecord ? {
+      hash: initialSessionRecord.hash,
+      question: initialSessionRecord.question,
+      spreadType: initialSessionRecord.spreadType,
+      isStrictMode: initialSessionRecord.isStrictMode,
+      shuffledDeck: initialSessionRecord.shuffledDeck,
+      orientations: initialSessionRecord.orientations
+    } : null
+  );
+  const [chosenNumbers, setChosenNumbers] = useState<number[]>(initialSessionRecord?.chosenNumbers || []);
+  const [reading, setReading] = useState<TarotReading | null>(initialSessionRecord?.reading || null);
+  const [sessionRecordId, setSessionRecordId] = useState<string | null>(initialSessionRecord?.id || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progressStage, setProgressStage] = useState('');
-  const [supplementaryCards, setSupplementaryCards] = useState<SupplementaryCard[]>([]);
+  const [supplementaryCards, setSupplementaryCards] = useState<SupplementaryCard[]>(initialSessionRecord?.supplementaryCards || []);
   const [elapsedSec, setElapsedSec] = useState(0);
-  const [cardIndex, setCardIndex] = useState(0);
-  const [cardFlipped, setCardFlipped] = useState(false);
+  const [astroPhraseIdx, setAstroPhraseIdx] = useState(0);
   const [diceRolling, setDiceRolling] = useState(false);
-  const [diceResult, setDiceResult] = useState<number | null>(null);
+  const [diceResults, setDiceResults] = useState<number[]>([]);
+  const [replacementIndex, setReplacementIndex] = useState<number | null>(null);
+  const [lastRollMessage, setLastRollMessage] = useState('');
+  const [deepAnalysis, setDeepAnalysis] = useState<DeepAnalysis | null>(initialSessionRecord?.deepAnalysis || null);
+  const [deepAnalysisLoading, setDeepAnalysisLoading] = useState(false);
+  const [expandedCardIndex, setExpandedCardIndex] = useState<number | null>(0);
+  const [advancedOpen, setAdvancedOpen] = useState(
+    !!(initialSessionRecord?.supplementaryCards?.length || initialSessionRecord?.deepAnalysis)
+  );
+  const [portraitExpanded, setPortraitExpanded] = useState(false);
 
-  // Memoize particle positions for flip stage
-  const stars = useMemo(() => Array.from({ length: 40 }, () => ({
-    w: Math.random() * 2 + 1, left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`,
-    dur: 2 + Math.random() * 3, delay: Math.random() * 2,
-  })), []);
-  const dustParticles = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
-    dur: 4 + i * 0.4, delay: i * 0.3, left: `${10 + i * 7}%`,
-  })), []);
+  // Particles removed from here, moving to FlipStage
 
   // Memoize card selections
   const selectedCards = useMemo(() => {
@@ -82,11 +124,57 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
     return getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
   }, [session, chosenNumbers]);
 
+  const {
+    overallSupplementaryCards,
+    generalSupplementaryCards,
+    supplementaryCardsByLabel,
+  } = useMemo(() => {
+    const overall: typeof supplementaryCards = [];
+    const general: typeof supplementaryCards = [];
+    const byLabel: Record<string, typeof supplementaryCards> = {};
+    for (const sc of supplementaryCards) {
+      if (sc.contextType === 'overall') {
+        overall.push(sc);
+      } else if (sc.contextType === 'general' || !sc.contextType) {
+        general.push(sc);
+      } else if (sc.contextType === 'card' && sc.contextLabel) {
+        if (!byLabel[sc.contextLabel]) byLabel[sc.contextLabel] = [];
+        byLabel[sc.contextLabel].push(sc);
+      }
+    }
+    return { overallSupplementaryCards: overall, generalSupplementaryCards: general, supplementaryCardsByLabel: byLabel };
+  }, [supplementaryCards]);
+
+  const requiredCardCount = SPREADS[spreadType].count;
+  const replacementLabel = replacementIndex !== null
+    ? SPREADS[spreadType].positions[replacementIndex] || `牌位 ${replacementIndex + 1}`
+    : null;
+
+  React.useEffect(() => {
+    if (!sessionRecordId) return;
+    try {
+      const existing = JSON.parse(localStorage.getItem('tarot_sessions') || '[]');
+      const updated = existing.map((record: StoredSessionRecord) =>
+        record.id === sessionRecordId
+          ? { ...record, supplementaryCards, deepAnalysis }
+          : record
+      );
+      localStorage.setItem('tarot_sessions', JSON.stringify(updated));
+    } catch {
+      // localStorage save failed silently
+    }
+  }, [sessionRecordId, supplementaryCards, deepAnalysis]);
+
   // Timer: counts up while loading
   React.useEffect(() => {
-    if (!loading) { setElapsedSec(0); return; }
+    if (!loading) { 
+      setElapsedSec(0); 
+      setAstroPhraseIdx(0);
+      return; 
+    }
     const t = setInterval(() => setElapsedSec(s => s + 1), 1000);
-    return () => clearInterval(t);
+    const pt = setInterval(() => setAstroPhraseIdx(prev => (prev + 1) % ASTRO_PHRASES.length), 3500);
+    return () => { clearInterval(t); clearInterval(pt); };
   }, [loading]);
 
   const startShuffle = async () => {
@@ -127,37 +215,67 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
       keywords: selectedCards[i].keywords
     }));
 
-    try {
-      const result = await interpretTarotStream({
-        question: session.question,
-        spreadType: SPREADS[spreadType].name,
-        isStrictMode: session.isStrictMode,
-        positions
-      }, setProgressStage);
+    const readingInput = {
+      question: session.question,
+      spreadType: SPREADS[spreadType].name,
+      isStrictMode: session.isStrictMode,
+      positions
+    };
 
-      const finalSession = { ...session, chosenNumbers, reading: result, createdAt: new Date().toISOString() };
-
+    // Try up to 2 times with brief delay between retries
+    let lastError: any = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const existing = JSON.parse(localStorage.getItem('tarot_sessions') || '[]');
-        existing.unshift({ id: crypto.randomUUID(), ...finalSession });
-        localStorage.setItem('tarot_sessions', JSON.stringify(existing.slice(0, 100)));
-      } catch {
-        // localStorage save failed silently
+        if (attempt > 0) {
+          setProgressStage('连接波动，正在重新尝试...');
+          await new Promise(r => setTimeout(r, 1500));
+        }
+        const result = await interpretTarotStream(readingInput, setProgressStage);
+
+        const recordId = crypto.randomUUID();
+        const finalSession: StoredSessionRecord = {
+          id: recordId,
+          ...session,
+          chosenNumbers,
+          reading: result,
+          supplementaryCards: [],
+          deepAnalysis: null,
+          createdAt: new Date().toISOString()
+        };
+
+        try {
+          const existing = JSON.parse(localStorage.getItem('tarot_sessions') || '[]');
+          existing.unshift(finalSession);
+          localStorage.setItem('tarot_sessions', JSON.stringify(existing.slice(0, 100)));
+        } catch {
+          // localStorage save failed silently
+        }
+        setSessionRecordId(recordId);
+        setReading(result);
+        setStep('result');
+        setLoading(false);
+        setProgressStage('');
+        return; // success — exit early
+      } catch (e: any) {
+        lastError = e;
+        const msg = e?.message || '';
+        // Don't retry on quota exhaustion — it won't help
+        if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) break;
       }
-      setReading(result);
-      setCardIndex(0);
-      setCardFlipped(false);
-      setStep('flip');
-      setLoading(false);
-      setProgressStage('');
-    } catch {
-      setError("AI 解读失败，请检查网络后重试。");
-      setLoading(false);
-      setProgressStage('');
     }
+
+    // All retries failed
+    const msg = lastError?.message || '';
+    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+      setError("API 配额暂时耗尽。请稍等片刻后重试，或在设置中切换模型。");
+    } else {
+      setError(`AI 解读失败：${msg.slice(0, 100) || '请检查网络后重试。'}`);
+    }
+    setLoading(false);
+    setProgressStage('');
   };
 
-  const drawSupplementaryCard = async () => {
+  const drawSupplementaryCard = async (contextType: 'overall' | 'card' | 'general' = 'general', contextLabel?: string) => {
     if (!session || isStrictMode || loading) return;
     setLoading(true);
 
@@ -170,94 +288,175 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
     const cardData = getCardsFromSelection(session.shuffledDeck, session.orientations, [randomNum])[0];
 
     try {
+      if (contextType === 'overall' && !contextLabel) {
+        setProgressStage('正在基于全局灵感补牌...');
+      } else if (contextType === 'card' && contextLabel) {
+        setProgressStage(`正在针对「${contextLabel}」补牌...`);
+      } else {
+        setProgressStage('正在连接新灵感...');
+      }
+
       const result = await interpretSupplementary({
         question: session.question,
         card: cardData.name,
         orientation: cardData.orientation,
-        keywords: cardData.keywords
+        keywords: cardData.keywords,
+        contextType,
+        contextLabel,
+        existingPortrait: reading?.eventPortrait || '',
+        existingCards: selectedCards.map(c => `${c.name}(${c.orientation === 'upright' ? '正位' : '逆位'})`),
+        existingContinuations: supplementaryCards.map(sc => sc.portraitContinuation).filter(Boolean),
+        deepAnalysisContext: deepAnalysis ? JSON.stringify(deepAnalysis) : undefined,
       });
-      setSupplementaryCards(prev => [...prev, { ...cardData, interpretation: result.summary, chosenNumber: randomNum }]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "补牌解读失败，请重试。");
+      setSupplementaryCards(prev => [...prev, {
+        ...cardData, 
+        interpretation: result.portraitContinuation || result.coreMessage, 
+        coreMessage: result.coreMessage, 
+        advice: result.advice, 
+        connection: result.connection,
+        portraitContinuation: result.portraitContinuation,
+        deepReading: result.deepReading,
+        energyShift: result.energyShift,
+        chosenNumber: randomNum, 
+        contextType,
+        contextLabel 
+      }]);
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+        setError("补牌请求受限，请稍后再试。");
+      } else {
+        setError(err instanceof Error ? err.message : "补牌解读失败，请重试。");
+      }
+      // Auto-dismiss supplement errors after 5s
+      setTimeout(() => setError(null), 5000);
     } finally {
+      setProgressStage('');
       setLoading(false);
     }
   };
 
+  const generateDeepAnalysis = async () => {
+    if (!session || !reading || deepAnalysisLoading) return;
+    setDeepAnalysisLoading(true);
+    try {
+      const cards = getCardsFromSelection(session.shuffledDeck, session.orientations, chosenNumbers);
+      const result = await interpretDeepAnalysis({
+        question: session.question,
+        eventPortrait: reading.eventPortrait || reading.summary,
+        summary: reading.summary,
+        cards: reading.detailedInterpretations.map((di, i) => ({
+          name: cards[i]?.name || di.card,
+          orientation: cards[i]?.orientation || 'upright',
+          position: di.position,
+          meaning: di.meaning,
+        })),
+      });
+      setDeepAnalysis(result);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : '深度分析生成失败，请重试。');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDeepAnalysisLoading(false);
+    }
+  };
+
+  const exportPoster = async () => {
+    const doExport = async () => {
+      const el = document.getElementById('tarot-result-container');
+      if (!el || !(window as any).htmlToImage) return;
+      try {
+        setLoading(true);
+        const dataUrl = await (window as any).htmlToImage.toPng(el, {
+          pixelRatio: 2,
+          backgroundColor: '#FAF7F2',
+          filter: (node: any) => {
+            if (node.classList && node.classList.contains('export-exclude')) {
+              return false;
+            }
+            return true;
+          }
+        });
+        const link = document.createElement('a');
+        link.download = `TarotFlow_Divine_${new Date().getTime()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!(window as any).htmlToImage) {
+      setLoading(true);
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js';
+      script.onload = () => doExport();
+      document.body.appendChild(script);
+    } else {
+      doExport();
+    }
+  };
+
+  const rollDiceBatch = () => {
+    if (diceRolling || (chosenNumbers.length >= requiredCardCount && replacementIndex === null)) return;
+    const targetReplacementIndex = replacementIndex;
+    const targetReplacementLabel = replacementLabel;
+    const snapshotChosenNumbers = [...chosenNumbers];
+    setDiceRolling(true);
+    setDiceResults([]);
+    setLastRollMessage('');
+    window.setTimeout(() => {
+      if (targetReplacementIndex !== null) {
+        const currentNumber = snapshotChosenNumbers[targetReplacementIndex];
+        const lockedNumbers = snapshotChosenNumbers.filter((_, index) => index !== targetReplacementIndex);
+        const available = ALL_CARD_NUMBERS.filter((n) => n !== currentNumber && !lockedNumbers.includes(n));
+        const [replacementNumber] = pickRandomUniqueNumbers(available, 1);
+        const nextNumbers = snapshotChosenNumbers.map((num, index) => (
+          index === targetReplacementIndex ? replacementNumber : num
+        ));
+        setDiceResults([replacementNumber]);
+        setChosenNumbers(nextNumbers);
+        setLastRollMessage(`已将「${targetReplacementLabel}」替换为 ${replacementNumber}`);
+        setReplacementIndex(null);
+      } else {
+        const available = ALL_CARD_NUMBERS.filter((n) => !snapshotChosenNumbers.includes(n));
+        const pickedNumbers = pickRandomUniqueNumbers(available, requiredCardCount);
+        setDiceResults(pickedNumbers);
+        setChosenNumbers(pickedNumbers);
+        setLastRollMessage(`命运已为你落下 ${pickedNumbers.length} 个数字，对应牌阵已经选定`);
+      }
+      setDiceRolling(false);
+    }, 650);
+  };
+
   const goBack = () => {
     if (step === 'shuffle') setStep('setup');
-    else if (step === 'select') { setStep('shuffle'); setChosenNumbers([]); }
+    else if (step === 'select') {
+      setStep('shuffle');
+      setChosenNumbers([]);
+      setDiceResults([]);
+      setDiceRolling(false);
+      setReplacementIndex(null);
+      setLastRollMessage('');
+    }
   };
 
   return (
     <div className="min-h-[60vh] flex flex-col">
       <AnimatePresence mode="wait">
         {step === 'setup' && (
-          <motion.div key="setup" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-7">
-            <div className="space-y-3">
-              <label className="block text-[11px] font-serif uppercase tracking-[0.2em] text-[#5C5349]">你的问题</label>
-              <textarea
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                maxLength={499}
-                placeholder="例如：今年我的事业发展趋势如何？"
-                className="w-full bg-[#F3EEE6] border border-[#E8E0D2] rounded-2xl p-5 text-lg font-light focus:border-[#C9A86A] outline-none transition-all min-h-[100px] resize-none"
-              />
-              {/* Scrollable suggested questions */}
-              <div className="space-y-2.5 -mx-6">
-                <p className="text-[10px] uppercase tracking-widest text-[#5C5349] font-serif px-6">推荐问题</p>
-                <div className="overflow-hidden">
-                  <motion.div className="flex gap-2 px-6 pb-1" animate={{ x: [0, -1000, 0] }} transition={{ repeat: Infinity, duration: 30, ease: 'linear' }} style={{ width: 'max-content' }}>
-                    {SUGGESTED_QUESTIONS.flatMap((group) =>
-                      group.questions.map((q) => (
-                        <button key={q} onClick={() => setQuestion(q)} className="px-3.5 py-2 rounded-full bg-[#F3EEE6] border border-[#E8E0D2]/50 text-[11px] text-[#5C5349] hover:border-[#C9A86A]/40 hover:bg-[#C9A86A]/5 transition-all whitespace-nowrap shrink-0">
-                          <span className="text-[#C9A86A]/60 mr-1 text-[10px]">{group.category}</span>{q}
-                        </button>
-                      ))
-                    )}
-                  </motion.div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="block text-[11px] font-serif uppercase tracking-[0.2em] text-[#5C5349]">选择牌阵</label>
-              <div role="radiogroup" aria-label="选择牌阵" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {(Object.keys(SPREADS) as SpreadType[]).map((key) => {
-                  const Icon = { single: Zap, three: Columns, five: Layout, relationship: Heart, career: Briefcase, week: Calendar, ten: Compass }[key] || Sparkles;
-                  const selected = spreadType === key;
-                  return (
-                    <div key={key} onClick={() => setSpreadType(key)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSpreadType(key); } }} role="radio" aria-checked={selected} tabIndex={0} className={`p-4 rounded-xl border cursor-pointer transition-all ${selected ? 'bg-[#C9A86A]/10 border-[#C9A86A] shadow-sm shadow-[#C9A86A]/10' : 'bg-[#F3EEE6] border-[#E8E0D2] hover:border-[#C9A86A]/30'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Icon size={14} className={selected ? 'text-[#C9A86A]' : 'text-[#5C5349]/50'} />
-                        <span className="text-[10px] font-mono text-[#5C5349]/60">{SPREADS[key].count}张</span>
-                      </div>
-                      <h4 className="text-sm font-serif leading-snug">{SPREADS[key].name}</h4>
-                      <p className="text-[10px] text-[#5C5349]/60 mt-0.5 line-clamp-1">{SPREADS[key].description}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#F3EEE6] border border-[#E8E0D2] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <ShieldAlert className={`shrink-0 ${isStrictMode ? "text-[#C9A86A]" : "text-[#5C5349]/50"}`} size={18} />
-                <div className="min-w-0">
-                  <h4 className="text-sm font-serif">严格模式</h4>
-                  <p className="text-[10px] text-[#5C5349]/70 truncate">同一问题仅允许一次占卜</p>
-                </div>
-              </div>
-              <button onClick={() => setIsStrictMode(!isStrictMode)} role="switch" aria-checked={isStrictMode} aria-label="严格模式" className={`w-11 h-6 rounded-full transition-all relative shrink-0 ${isStrictMode ? 'bg-[#C9A86A]' : 'bg-[#E8E0D2]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${isStrictMode ? 'right-1' : 'left-1'}`} />
-              </button>
-            </div>
-
-            <button disabled={!question.trim() || loading} onClick={startShuffle} className="w-full py-4 bg-[#C9A86A] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#B8944F] transition-all disabled:opacity-50">
-              {loading ? <Loader2 className="animate-spin" /> : <RefreshCw size={18} />}
-              <span>开始洗牌</span>
-            </button>
-          </motion.div>
+          <SetupForm
+            question={question}
+            setQuestion={setQuestion}
+            spreadType={spreadType}
+            setSpreadType={setSpreadType}
+            isStrictMode={isStrictMode}
+            setIsStrictMode={setIsStrictMode}
+            startShuffle={startShuffle}
+            loading={loading}
+          />
         )}
 
         {step === 'shuffle' && session && (
@@ -278,739 +477,441 @@ export default function TarotFlow({ onComplete }: { onComplete: () => void }) {
             <div className="flex items-center gap-2 px-4 py-2 bg-[#F3EEE6] rounded-full border border-[#E8E0D2] text-xs font-mono text-[#5C5349]">
               <Hash size={14} /><span>校验码: {session.hash.substring(0, 16)}...</span>
             </div>
-            <button onClick={() => setStep('select')} className="px-12 py-4 bg-[#C9A86A] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#B8944F] transition-all">
+            <button onClick={() => {
+              setChosenNumbers([]);
+              setDiceResults([]);
+              setReplacementIndex(null);
+              setLastRollMessage('');
+              setStep('select');
+            }} className="px-12 py-4 bg-[#C9A86A] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#B8944F] transition-all">
               <span>进入选牌</span><ArrowRight size={18} />
             </button>
           </motion.div>
         )}
 
-        {step === 'flip' && reading && session && (() => {
-          const cards = selectedCards;
-          const cardCount = cards.length;
-          const allDone = cardIndex >= cardCount;
-          const current = !allDone ? cards[cardIndex] : null;
-
-          return (
-            <motion.div
-              key="flip"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden"
-              style={{ background: 'radial-gradient(ellipse at center, #1a1410 0%, #0d0a07 100%)' }}
-            >
-              {/* Stars background */}
-              {stars.map((s, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute rounded-full bg-white"
-                  style={{ width: s.w, height: s.w, left: s.left, top: s.top }}
-                  animate={{ opacity: [0.1, 0.8, 0.1] }}
-                  transition={{ duration: s.dur, repeat: Infinity, delay: s.delay }}
-                />
-              ))}
-
-              {/* Gold dust particles */}
-              {dustParticles.map((d, i) => (
-                <motion.div
-                  key={`dust-${i}`}
-                  className="absolute w-0.5 h-0.5 bg-[#C9A86A] rounded-full"
-                  animate={{ y: [0, -window.innerHeight], opacity: [0, 1, 0] }}
-                  transition={{ duration: d.dur, repeat: Infinity, delay: d.delay }}
-                  style={{ left: d.left, bottom: 0 }}
-                />
-              ))}
-
-              <AnimatePresence mode="wait">
-                {!allDone ? (
-                  <motion.div
-                    key={`card-flip-${cardIndex}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.4 }}
-                    className="flex flex-col items-center gap-8 relative z-10 px-6 w-full max-w-sm"
-                  >
-                    {/* Position label */}
-                    <motion.div
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-center space-y-1"
-                    >
-                      <p className="text-[10px] tracking-[0.4em] text-[#C9A86A]/60 uppercase font-mono">
-                        {cardIndex + 1} / {cardCount}
-                      </p>
-                      <p className="text-sm tracking-[0.2em] text-[#E7D7B0]/80 font-serif">
-                        {SPREADS[spreadType].positions[cardIndex]}
-                      </p>
-                    </motion.div>
-
-                    {/* The card — full flip reveal */}
-                    <div style={{ perspective: '1400px' }}>
-                      <motion.div
-                        style={{ transformStyle: 'preserve-3d', width: '220px', height: '380px', position: 'relative', cursor: cardFlipped ? 'default' : 'pointer' }}
-                        animate={{ rotateY: cardFlipped ? 180 : 0 }}
-                        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                        onClick={() => !cardFlipped && setCardFlipped(true)}
-                      >
-                        {/* Card back — ornate */}
-                        <div
-                          className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center select-none overflow-hidden"
-                          style={{
-                            backfaceVisibility: 'hidden',
-                            background: 'linear-gradient(135deg, #1c1408 0%, #2d1f0a 50%, #1c1408 100%)',
-                            border: '2px solid rgba(201,168,106,0.5)',
-                            boxShadow: '0 0 60px rgba(201,168,106,0.2), 0 30px 60px rgba(0,0,0,0.8)',
-                          }}
-                        >
-                          {/* Ornate border pattern */}
-                          <div className="absolute inset-3 rounded-xl" style={{ border: '1px solid rgba(201,168,106,0.3)' }} />
-                          <div className="absolute inset-5 rounded-lg" style={{ border: '1px solid rgba(201,168,106,0.15)' }} />
-
-                          {/* Fog layers */}
-                          <motion.div
-                            className="absolute inset-0 rounded-2xl"
-                            animate={{ opacity: [0.4, 0.7, 0.4] }}
-                            transition={{ repeat: Infinity, duration: 3 }}
-                            style={{ background: 'radial-gradient(ellipse at center, rgba(201,168,106,0.08) 0%, transparent 70%)' }}
-                          />
-
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
-                            className="absolute inset-0 rounded-2xl"
-                            style={{ background: 'conic-gradient(from 0deg, transparent, rgba(201,168,106,0.05), transparent, rgba(201,168,106,0.05), transparent)' }}
-                          />
-
-                          {/* Center emblem */}
-                          <div className="relative flex flex-col items-center gap-4">
-                            <motion.div
-                              animate={{ scale: [0.9, 1.1, 0.9], opacity: [0.5, 1, 0.5] }}
-                              transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-                            >
-                              <Sparkles size={40} className="text-[#C9A86A]" />
-                            </motion.div>
-                            <motion.p
-                              animate={{ opacity: [0.4, 0.9, 0.4] }}
-                              transition={{ repeat: Infinity, duration: 2 }}
-                              className="text-[11px] tracking-[0.5em] text-[#C9A86A]/70 uppercase font-serif"
-                            >
-                              点击揭晓
-                            </motion.p>
-                          </div>
-                        </div>
-
-                        {/* Card front — real Rider-Waite image */}
-                        <div
-                          className="absolute inset-0 rounded-2xl overflow-hidden select-none"
-                          style={{
-                            backfaceVisibility: 'hidden',
-                            transform: 'rotateY(180deg)',
-                            boxShadow: '0 0 80px rgba(201,168,106,0.4), 0 40px 80px rgba(0,0,0,0.8)',
-                          }}
-                        >
-                          <img
-                            src={current.imageUrl}
-                            alt={current.name}
-                            className="w-full h-full object-cover"
-                            style={{
-                              transform: current.orientation === 'reversed' ? 'rotate(180deg)' : 'none',
-                            }}
-                            draggable={false}
-                          />
-                          {/* Golden overlay frame */}
-                          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ border: '2px solid rgba(201,168,106,0.6)', boxShadow: 'inset 0 0 30px rgba(201,168,106,0.1)' }} />
-                        </div>
-                      </motion.div>
-                    </div>
-
-                    {/* Card info — appears after flip */}
-                    <AnimatePresence>
-                      {cardFlipped && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 30 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ delay: 0.5, duration: 0.6 }}
-                          className="text-center space-y-4 w-full"
-                        >
-                          <div className="space-y-1">
-                            <h3 className="text-2xl font-serif text-[#E7D7B0]">{current.name}</h3>
-                            <p className="text-[11px] tracking-[0.3em] text-[#C9A86A]/60 uppercase">{current.nameEn}</p>
-                            <span className={`inline-block mt-1 text-[10px] px-3 py-1 rounded-full border ${
-                              current.orientation === 'upright'
-                                ? 'border-emerald-500/40 text-emerald-400/80 bg-emerald-500/5'
-                                : 'border-red-500/40 text-red-400/80 bg-red-500/5'
-                            }`}>
-                              {current.orientation === 'upright' ? '正位' : '逆位'}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2 justify-center">
-                            {current.keywords.map(k => (
-                              <span key={k} className="text-[11px] px-3 py-1 rounded-full text-[#C9A86A]/70 border border-[#C9A86A]/20 bg-[#C9A86A]/5">
-                                {k}
-                              </span>
-                            ))}
-                          </div>
-                          <motion.button
-                            whileTap={{ scale: 0.97 }}
-                            onClick={() => {
-                              if (cardIndex < cardCount - 1) {
-                                setCardIndex(i => i + 1);
-                                setCardFlipped(false);
-                              } else {
-                                setCardIndex(cardCount);
-                              }
-                            }}
-                            className="w-full py-3.5 rounded-full font-medium text-sm transition-all"
-                            style={{ background: 'linear-gradient(135deg, #C9A86A, #E7D7B0)', color: '#1a1410', boxShadow: '0 8px 32px rgba(201,168,106,0.3)' }}
-                          >
-                            {cardIndex < cardCount - 1 ? `下一张 →` : '查看完整解读'}
-                          </motion.button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                ) : (
-                  /* All cards revealed */
-                  <motion.div
-                    key="all-done"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center gap-8 relative z-10 px-6 text-center"
-                  >
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                    >
-                      <Sparkles size={48} className="text-[#C9A86A]" />
-                    </motion.div>
-                    <div className="space-y-2">
-                      <h2 className="text-3xl font-serif text-[#E7D7B0]">牌面已全部揭晓</h2>
-                      <p className="text-[#C9A86A]/60 text-sm">命运的信息已经显现</p>
-                    </div>
-                    {/* Mini card row recap */}
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      {cards.map((c, i) => (
-                        <div key={i} className="relative w-10 h-16 rounded-lg overflow-hidden" style={{ border: '1px solid rgba(201,168,106,0.4)' }}>
-                          <img
-                            src={c.imageUrl}
-                            alt={c.name}
-                            className="w-full h-full object-cover"
-                            style={{ transform: c.orientation === 'reversed' ? 'rotate(180deg)' : 'none' }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setStep('result')}
-                      className="px-12 py-4 rounded-full font-medium text-[#1a1410] shadow-2xl"
-                      style={{ background: 'linear-gradient(135deg, #C9A86A, #E7D7B0)', boxShadow: '0 0 40px rgba(201,168,106,0.4)' }}
-                    >
-                      查看完整解读
-                    </motion.button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          );
-        })()}
+        {step === 'flip' && session && (
+          <FlipStage
+            selectedCards={selectedCards}
+            spreadType={spreadType}
+            error={error}
+            setError={setError}
+            startReading={startReading}
+            loading={loading}
+          />
+        )}
 
         {step === 'select' && session && (
-          <motion.div key="select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 relative">
-            <button onClick={goBack} className="flex items-center gap-2 text-[#5C5349] hover:text-[#3D352E] transition-colors text-sm">
-              <ArrowLeft size={16} /><span>返回洗牌</span>
-            </button>
-            <div className="text-center space-y-2">
-              <h3 className="text-2xl font-serif">投掷骰子选牌</h3>
-              <p className="text-[#5C5349]/80 text-sm italic">点击骰子，随机抽取 {SPREADS[spreadType].count} 张牌</p>
+          <motion.div key="select" initial={{ opacity: 0, filter: 'blur(10px)' }} animate={{ opacity: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.5 }} className="space-y-10 relative w-full min-h-[60vh] flex flex-col items-center justify-center py-6">
+            {/* 动态呼吸环境光晕 (保留高级的背景质感) */}
+            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden flex items-center justify-center">
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute w-[40rem] h-[40rem] rounded-full bg-gradient-to-tr from-[#FDF9F1]/80 to-[#F2E5C9]/50 blur-3xl opacity-50"
+              />
+              <motion.div
+                animate={{ scale: [1.1, 0.9, 1.1], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+                className="absolute -top-20 -right-20 w-[30rem] h-[30rem] rounded-full bg-gradient-to-br from-[#FFFFFF]/80 to-[#E8D9B4]/40 blur-3xl opacity-30"
+              />
             </div>
 
-            {/* Dice button */}
-            <div className="flex flex-col items-center gap-6">
-              <motion.button
-                onClick={() => {
-                  if (diceRolling || chosenNumbers.length >= SPREADS[spreadType].count) return;
-                  setDiceRolling(true);
-                  setDiceResult(null);
-                  // Animate for 600ms, then pick a random number
-                  setTimeout(() => {
-                    const available = Array.from({ length: 78 }, (_, i) => i + 1).filter(n => !chosenNumbers.includes(n));
-                    const picked = available[Math.floor(Math.random() * available.length)];
-                    setDiceResult(picked);
-                    setChosenNumbers(prev => [...prev, picked]);
-                    setDiceRolling(false);
-                  }, 600);
-                }}
-                disabled={chosenNumbers.length >= SPREADS[spreadType].count}
-                whileHover={chosenNumbers.length < SPREADS[spreadType].count ? { scale: 1.08 } : {}}
-                whileTap={chosenNumbers.length < SPREADS[spreadType].count ? { scale: 0.92 } : {}}
-                className={`w-28 h-28 rounded-3xl flex items-center justify-center transition-all shadow-lg ${
-                  chosenNumbers.length >= SPREADS[spreadType].count
-                    ? 'bg-[#E8E0D2] text-[#5C5349]/30 cursor-default'
-                    : 'bg-gradient-to-br from-[#C9A86A] to-[#B8944F] text-white cursor-pointer hover:shadow-xl hover:shadow-[#C9A86A]/20'
-                }`}
-              >
-                <motion.div
-                  animate={diceRolling ? { rotate: [0, 90, 180, 270, 360], scale: [1, 1.2, 0.9, 1.1, 1] } : {}}
-                  transition={{ duration: 0.6, ease: 'easeInOut' }}
-                >
-                  <Dice5 size={48} />
-                </motion.div>
-              </motion.button>
-
-              {/* Rolling result display */}
-              <AnimatePresence mode="wait">
-                {diceRolling && (
-                  <motion.p key="rolling" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="text-lg font-serif text-[#C9A86A] italic">
-                    掷骰中…
-                  </motion.p>
-                )}
-                {!diceRolling && diceResult && (
-                  <motion.p key={`result-${diceResult}`}
-                    initial={{ opacity: 0, scale: 0.5, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="text-3xl font-mono font-bold text-[#C9A86A]">
-                    {diceResult}
-                  </motion.p>
-                )}
-                {!diceRolling && !diceResult && chosenNumbers.length === 0 && (
-                  <motion.p key="hint" initial={{ opacity: 0 }} animate={{ opacity: 0.6 }}
-                    className="text-sm text-[#5C5349] italic">
-                    点击上方骰子开始
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Selected numbers as removable chips */}
-            {chosenNumbers.length > 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-wrap justify-center gap-2">
-                {chosenNumbers.map((num, i) => (
-                  <motion.button
-                    key={`${num}-${i}`}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.1 }}
-                    onClick={() => setChosenNumbers(prev => prev.filter((_, idx) => idx !== i))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#C9A86A]/15 text-[#C9A86A] text-sm font-mono border border-[#C9A86A]/30 hover:bg-red-50 hover:text-red-400 hover:border-red-300 transition-colors"
-                    title="点击移除"
-                  >
-                    <span className="text-xs text-[#5C5349]/50">#{i + 1}</span>
-                    <span className="font-bold">{num}</span>
-                    <span className="text-[10px] opacity-50">✕</span>
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-
-            {error && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
-                <AlertCircle className="text-red-400 shrink-0" size={20} />
-                <p className="text-red-300 text-sm flex-1">{error}</p>
-                <button onClick={() => { setError(null); startReading(); }} className="px-4 py-1.5 bg-red-500/20 text-red-300 rounded-full text-xs hover:bg-red-500/30 transition-colors">重试</button>
-              </motion.div>
-            )}
-
-            <div className="sticky bottom-6 left-0 right-0 flex flex-col items-center gap-4">
-              <div className="flex gap-2">
-                {Array.from({ length: SPREADS[spreadType].count }).map((_, i) => (
-                  <div key={i} className={`w-3 h-3 rounded-full border transition-all ${chosenNumbers[i] ? 'bg-[#C9A86A] border-[#C9A86A] scale-110' : 'bg-transparent border-[#E8E0D2]'}`} />
-                ))}
-              </div>
-              <button disabled={chosenNumbers.length !== SPREADS[spreadType].count || loading} onClick={startReading}
-                className="px-12 py-4 bg-[#C9A86A] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#B8944F] transition-all disabled:opacity-50 shadow-2xl shadow-[#C9A86A]/10">
-                {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />}
-                <span>{loading ? (progressStage || '解读中...') : '开始解读'}</span>
+            {/* 返回与头部 */}
+            <div className="w-full max-w-5xl px-4 flex justify-start z-10">
+              <button onClick={goBack} className="flex items-center gap-2 text-[#5C5349] hover:text-[#3D352E] transition-all text-sm font-medium bg-white/30 px-4 py-2 rounded-full backdrop-blur-md border border-white/50 shadow-sm hover:bg-white/50">
+                <ArrowLeft size={16} /><span>返回洗牌</span>
               </button>
             </div>
 
-            {loading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-[#FAF7F2]/90 backdrop-blur-md flex flex-col items-center justify-center gap-5" role="alert" aria-live="assertive">
-                {/* Rotating icon */}
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }}>
-                  <Sparkles size={44} className="text-[#C9A86A]" />
-                </motion.div>
-                {/* Stage text */}
-                <motion.p key={progressStage} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-xl font-serif text-[#3D352E] italic">
-                  {progressStage || '正在连接灵感...'}
-                </motion.p>
-                {/* Elapsed timer */}
-                <p className="text-xs text-[#5C5349] tabular-nums">已等待 {elapsedSec}s</p>
-                {/* Pulse progress bar */}
-                <div className="w-40 h-0.5 bg-[#E7D7B0]/40 rounded-full overflow-hidden">
-                  <motion.div className="h-full bg-[#C9A86A]/60 rounded-full"
-                    animate={{ x: ['-100%', '100%'] }}
-                    transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-                    style={{ width: '60%' }}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-
-        {step === 'result' && reading && session && (() => {
-          const cards = selectedCards;
-          const cardCount = cards.length;
-
-          return (
-          <motion.div key="result" initial={{ opacity: 0, y: 30, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="space-y-0 relative">
-            
-            {/* === Ambient Background Glow === */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10 mix-blend-luminosity">
-              <motion.div animate={{ rotate: 360, scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 80, ease: "linear" }}
-                className="absolute top-[-20%] left-[10%] w-[120%] h-[120%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#C9A86A]/[0.04] via-transparent to-transparent blur-3xl opacity-60 rounded-full" />
-            </div>
-
-            {/* === Section A: Title === */}
-            <div className="text-center space-y-5 mb-14">
-              <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-                className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#C9A86A]/10 text-[#C9A86A] rounded-full text-xs uppercase tracking-widest border border-[#C9A86A]/20">
-                <CheckCircle2 size={14} /><span>占卜结论</span>
-              </motion.div>
-              {/* Question echo */}
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-                className="text-sm text-[#5C5349] italic">
-                「{session.question}」
-              </motion.p>
-              <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                className="text-3xl sm:text-4xl md:text-5xl font-serif leading-relaxed tracking-wide bg-gradient-to-r from-[#6b5f54] via-[#C9A86A] to-[#6b5f54] bg-clip-text text-transparent drop-shadow-sm pb-2">
-                {reading.summary}
-              </motion.h2>
-            </div>
-
-            {/* === Event Portrait (Optional but highly immersive) === */}
-            {reading.eventPortrait && (
-              <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                className="max-w-2xl mx-auto mb-14 relative px-8 py-10 bg-white/30 backdrop-blur-md rounded-3xl border border-white/50 shadow-inner shadow-black/5">
-                <div className="absolute -top-4 -left-2 text-7xl text-[#C9A86A]/20 font-serif leading-none">“</div>
-                <div className="absolute -bottom-8 -right-2 text-7xl text-[#C9A86A]/20 font-serif leading-none">”</div>
-                <p className="relative z-10 text-[15px] sm:text-[17px] text-[#5C5349] leading-loose font-serif text-justify tracking-wide mix-blend-multiply">
-                  {reading.eventPortrait}
-                </p>
-		<div className="absolute top-0 right-0 w-32 h-32 bg-[#C9A86A]/5 rounded-full blur-2xl pointer-events-none" />
-              </motion.div>
-            )}
-
-            {/* === Card Strip: always visible in result step === */}
-            <div className="mb-8">
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-5">
-                {cards.map((c, idx) => (
-                  <motion.div key={`recap-${idx}`} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + idx * 0.08 }}
-                    className="flex flex-col items-center gap-1.5 group cursor-default">
-                    {/* Position label */}
-                    <p className="text-[8px] sm:text-[10px] text-[#C9A86A] font-serif tracking-widest uppercase drop-shadow-sm mb-1">
-                      {SPREADS[spreadType].positions[idx]}
-                    </p>
-                    <motion.div 
-                      animate={{ y: [0, -3, 0] }} transition={{ repeat: Infinity, duration: 4 + idx * 0.6, ease: "easeInOut", delay: idx * 0.3 }}
-                      className={`relative w-14 h-24 sm:w-20 sm:h-32 rounded-lg sm:rounded-xl overflow-hidden shadow-md group-hover:shadow-2xl group-hover:shadow-[#C9A86A]/20 transition-all duration-500 group-hover:border-[#C9A86A]/60 ${c.orientation === 'reversed' ? 'border border-[#5C5349]/30 shadow-[#5C5349]/10' : 'border border-[#C9A86A]/40 shadow-[#C9A86A]/15'}`}>
-                      <img src={c.imageUrl} alt={c.name} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${c.orientation === 'reversed' ? 'rotate-180' : ''}`} />
-                      <div className={`absolute inset-0 pointer-events-none mix-blend-overlay ${c.orientation === 'reversed' ? 'bg-gradient-to-t from-black/30 to-transparent' : 'bg-gradient-to-t from-[#C9A86A]/20 to-transparent'}`} />
-                    </motion.div>
-                    <div className="text-center">
-                      <p className="text-[9px] sm:text-[11px] font-serif text-[#3D352E] font-medium max-w-[72px] break-words leading-tight">{c.name}</p>
-                      <p className={`text-[8px] sm:text-[9px] mt-0.5 px-1.5 py-0.5 rounded-full border inline-block ${c.orientation === 'upright' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
-                        {c.orientation === 'upright' ? '正位' : '逆位'}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            <SectionDivider />
-
-            {/* === Section B: 全屏单张翻牌舞台 === */}
-            <AnimatePresence mode="wait">
-            {cardIndex < cardCount ? (() => {
-              const currentCard = cards[cardIndex];
-              const suit = getCardSuitStyle(currentCard.name);
-              return (
-                <motion.div key={`card-stage-${cardIndex}`}
-                  initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.35 }}
-                  className="mt-10 flex flex-col items-center"
-                >
-                  {/* Progress bar */}
-                  <div className="flex items-center justify-between w-full mb-8">
-                    <div className="flex gap-1.5 items-center">
-                      {cards.map((_, i) => (
-                        <div key={i} className={`rounded-full transition-all duration-500 ${
-                          i < cardIndex ? 'w-5 h-1.5 bg-[#C9A86A]' :
-                          i === cardIndex ? 'w-5 h-1.5 bg-[#C9A86A]' :
-                          'w-1.5 h-1.5 bg-[#E8E0D2]/30'
-                        }`} />
-                      ))}
-                    </div>
-                    <span className="text-[11px] text-[#5C5349]/60 font-mono tabular-nums">
-                      {cardIndex + 1} / {cardCount}
-                    </span>
-                  </div>
-
-                  {/* Position label */}
-                  <p className="text-[11px] uppercase tracking-[0.25em] text-[#5C5349] mb-8 font-serif">
-                    第 {cardIndex + 1} 张 · {SPREADS[spreadType].positions[cardIndex]}
-                  </p>
-
-                  {/* ── The flip card ── */}
-                  <div style={{ perspective: '1000px' }} className="mb-10">
-                    <motion.div
-                      style={{
-                        transformStyle: 'preserve-3d',
-                        width: '160px',
-                        height: '240px',
-                        position: 'relative',
-                        cursor: cardFlipped ? 'default' : 'pointer',
-                      }}
-                      animate={{ rotateY: cardFlipped ? 180 : 0 }}
-                      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-                      onClick={() => !cardFlipped && setCardFlipped(true)}
-                    >
-                      {/* Back face */}
-                      <div className="absolute inset-0 rounded-2xl bg-[#F3EEE6] border border-[#E8E0D2] flex flex-col items-center justify-center gap-4 select-none"
-                        style={{ backfaceVisibility: 'hidden' }}>
-                        <div className="absolute inset-3 border border-[#E8E0D2]/60 rounded-xl pointer-events-none" />
-                        <div className="absolute inset-6 border border-white/[0.03] rounded-lg pointer-events-none" />
-                        <motion.div animate={{ opacity: [0.25, 0.8, 0.25], scale: [0.88, 1.12, 0.88] }}
-                          transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}>
-                          <Sparkles size={28} className="text-[#C9A86A]/50" />
-                        </motion.div>
-                        <span className="text-[11px] text-[#5C5349]/60 font-serif italic tracking-wider">点击翻牌</span>
-                      </div>
-
-                      {/* Front face — real Rider-Waite image */}
-                      <div className="absolute inset-0 rounded-2xl border border-[#E8E0D2] overflow-hidden select-none"
-                        style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                        <img
-                          src={currentCard.imageUrl}
-                          alt={currentCard.name}
-                          className={`w-full h-full object-cover ${currentCard.orientation === 'reversed' ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                    </motion.div>
-                  </div>
-
-                  {/* ── Interpretation (slides in after flip) ── */}
-                  <AnimatePresence>
-                  {cardFlipped && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.45, duration: 0.55 }}
-                      className="w-full space-y-6"
-                    >
-                      {/* Card identity */}
-                      <div className="text-center space-y-2">
-                        <h3 className="text-3xl font-serif">{currentCard.name}</h3>
-                        <p className="text-sm text-[#5C5349] tracking-wider">{currentCard.nameEn}</p>
-                        <span className={`inline-block mt-1 text-xs px-3 py-1 rounded-full border ${
-                          currentCard.orientation === 'upright'
-                            ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5'
-                            : 'border-red-500/30 text-red-400 bg-red-500/5'
-                        }`}>
-                          {currentCard.orientation === 'upright' ? '正位' : '逆位'}
-                        </span>
-                      </div>
-
-                      {/* Keywords */}
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {currentCard.keywords.map(k => (
-                          <span key={k} className="text-xs px-3 py-1 bg-[#F3EEE6] rounded-full text-[#5C5349]/80">{k}</span>
-                        ))}
-                      </div>
-
-                      <SectionDivider />
-
-                      {/* Interpretation text */}
-                      <p className="text-[15px] text-[#5C5349] leading-[1.8] font-light">
-                        {reading.detailedInterpretations?.[cardIndex]?.meaning || '暂无解读'}
-                      </p>
-
-                      {/* Next / finish button */}
-                      <div className="pt-2 pb-8">
-                        <motion.button
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => {
-                            if (cardIndex < cardCount - 1) {
-                              setCardIndex(i => i + 1);
-                              setCardFlipped(false);
-                            } else {
-                              setCardIndex(cardCount);
-                            }
-                          }}
-                          className="w-full py-4 bg-[#C9A86A] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#B8944F] transition-all shadow-lg shadow-[#C9A86A]/20"
+            <div className="w-full flex-1 flex flex-col items-center space-y-6 z-10 px-4 relative justify-center">
+              
+              {/* 计算当前是否属于结算无替换状态 */}
+              {(function() {
+                const isResultsPhase = chosenNumbers.length >= requiredCardCount && replacementIndex === null;
+                return (
+                  <>
+                    {/* 清晰的标题与描述文字 (仅在投掷阶段和重铸阶段显示) */}
+                    <AnimatePresence mode="popLayout">
+                      {!isResultsPhase && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                          exit={{ opacity: 0, height: 0, scale: 0.8 }}
+                          transition={{ type: "spring", bounce: 0.2 }}
+                          className="text-center space-y-3 origin-center mt-6"
                         >
-                          {cardIndex < cardCount - 1 ? (
-                            <><span>下一张牌</span><ArrowRight size={16} /></>
-                          ) : (
-                            <><Sparkles size={16} /><span>查看完整解读</span></>
-                          )}
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })() : (
-              /* === Section C: Analysis (after all cards) === */
-              <motion.div key="analysis"
-                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-
-              <div className="space-y-10 mt-4 mb-16">
-                {/* Overall Trend */}
-                <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="p-8 sm:p-10 rounded-2xl bg-white/40 backdrop-blur-md border border-white/60 shadow-xl shadow-black/5 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#C9A86A]/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-1000" />
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A86A]/20 to-transparent flex items-center justify-center border border-[#C9A86A]/20">
-                        <TrendingUp size={16} className="text-[#C9A86A]" />
-                      </div>
-                      <h3 className="text-xl font-serif text-[#3D352E] tracking-wide">整体趋势</h3>
-                    </div>
-                    <p className="text-[#5C5349] leading-loose text-[15px]">{reading.overallTrend}</p>
-                  </div>
-                </motion.div>
-
-                {/* Three Suggestion Columns */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Action */}
-                  <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
-                    className="p-6 rounded-2xl bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-black/5 hover:bg-white/50 transition-colors flex flex-col items-center text-center relative overflow-hidden group">
-                    <div className="w-full absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-emerald-400/0 via-emerald-400 to-emerald-400/0 opacity-70" />
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 text-emerald-500 group-hover:scale-110 transition-transform duration-500">
-                      <ArrowRight size={16} />
-                    </div>
-                    <h4 className="text-[11px] font-medium text-emerald-600 uppercase tracking-[0.25em] mb-4">行动</h4>
-                    <p className="text-[#5C5349] text-[14px] leading-relaxed font-light">{reading.suggestions?.actionableSteps || '暂无建议'}</p>
-                  </motion.div>
-
-                  {/* Mindset */}
-                  <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                    className="p-6 rounded-2xl bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-black/5 hover:bg-white/50 transition-colors flex flex-col items-center text-center relative overflow-hidden group">
-                    <div className="w-full absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-blue-400/0 via-blue-400 to-blue-400/0 opacity-70" />
-                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-4 text-blue-500 group-hover:scale-110 transition-transform duration-500">
-                      <RefreshCw size={16} />
-                    </div>
-                    <h4 className="text-[11px] font-medium text-blue-600 uppercase tracking-[0.25em] mb-4">心态</h4>
-                    <p className="text-[#5C5349] text-[14px] leading-relaxed font-light">{reading.suggestions?.mindsetShift || '暂无建议'}</p>
-                  </motion.div>
-
-                  {/* Warning */}
-                  <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                    className="p-6 rounded-2xl bg-white/30 backdrop-blur-md border border-white/50 shadow-lg shadow-black/5 hover:bg-white/50 transition-colors flex flex-col items-center text-center relative overflow-hidden group">
-                    <div className="w-full absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-amber-400/0 via-amber-400 to-amber-400/0 opacity-70" />
-                    <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center mb-4 text-amber-500 group-hover:scale-110 transition-transform duration-500">
-                      <AlertCircle size={16} />
-                    </div>
-                    <h4 className="text-[11px] font-medium text-amber-600 uppercase tracking-[0.25em] mb-4">警示</h4>
-                    <p className="text-[#5C5349] text-[14px] leading-relaxed font-light">{reading.suggestions?.warningSigns || '暂无警示'}</p>
-                  </motion.div>
-                </div>
-
-                {/* Core Advice */}
-                <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.8, delay: 0.4, ease: "easeOut" }}
-                  className="p-8 sm:p-12 mt-6 rounded-3xl bg-gradient-to-b from-[#C9A86A]/10 to-transparent border border-[#C9A86A]/20 flex flex-col items-center gap-6 text-center relative overflow-hidden group">
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#C9A86A]/5 to-transparent mix-blend-multiply pointer-events-none" />
-                  <div className="flex items-center justify-center gap-3">
-                    <Sparkles size={16} className="text-[#C9A86A]" />
-                    <h3 className="text-[11px] font-semibold text-[#C9A86A] uppercase tracking-[0.3em]">核心建议</h3>
-                    <Sparkles size={16} className="text-[#C9A86A]" />
-                  </div>
-                  <p className="text-[#3D352E] text-xl sm:text-2xl font-serif leading-relaxed relative z-10 drop-shadow-sm">
-                    {reading.finalAdvice}
-                  </p>
-                </motion.div>
-              </div>
-
-              {/* === Section D: Supplementary + Actions === */}
-              <div className="space-y-8 pt-8">
-                {/* Supplementary cards section */}
-                {supplementaryCards.length > 0 && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <div className="flex items-center gap-3 px-2">
-                      <div className="w-1 h-8 bg-gradient-to-b from-[#C9A86A] to-[#C9A86A]/30 rounded-full" />
-                      <h3 className="text-2xl font-serif text-[#3D352E]">补充建议</h3>
-                      <div className="flex-1 h-px bg-gradient-to-r from-[#C9A86A]/20 to-transparent" />
-                    </div>
-                    <div className="space-y-4">
-                      {supplementaryCards.map((sc, i) => (
-                        <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                          className="group flex flex-col sm:flex-row gap-4 sm:gap-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#FFFDF9] to-[#F9F6F0] border border-[#E8E0D2] hover:border-[#C9A86A]/50 hover:shadow-xl hover:shadow-[#C9A86A]/15 transition-all">
-
-                          {/* Card image - prominent */}
-                          <div className="relative w-24 h-36 sm:w-32 sm:h-44 mx-auto sm:mx-0 shrink-0 rounded-xl overflow-hidden bg-[#F3EEE6] border border-[#E8E0D2] shadow-md group-hover:shadow-lg transition-all">
-                            <img
-                              src={sc.imageUrl}
-                              alt={sc.name}
-                              className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 ${sc.orientation === 'reversed' ? 'rotate-180' : ''}`}
-                            />
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 flex flex-col justify-between min-w-0">
-                            {/* Header */}
-                            <div>
-                              <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
-                                <h4 className="text-base font-serif text-[#3D352E] font-semibold">{sc.name}</h4>
-                                <span className={`text-[9px] px-2.5 py-1 rounded-full font-medium shrink-0 ${sc.orientation === 'upright' ? 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30' : 'bg-red-500/15 text-red-600 border border-red-500/30'}`}>
-                                  {sc.orientation === 'upright' ? '正位' : '逆位'}
-                                </span>
-                              </div>
-                              <p className="text-xs text-[#5C5349]/70 text-center sm:text-left mb-3">{sc.nameEn}</p>
-                            </div>
-
-                            {/* Interpretation */}
-                            <p className="text-sm text-[#5C5349] leading-relaxed text-center sm:text-left">{sc.interpretation}</p>
-                          </div>
+                          <motion.h3 className="text-3xl font-serif text-[#3D352E] drop-shadow-sm">
+                            投掷骰子选牌
+                          </motion.h3>
+                          <motion.p className="text-[#5C5349]/90 text-sm italic">
+                            {replacementLabel
+                              ? `当前准备替换「${replacementLabel}」，再掷一次就会更新这个牌位`
+                              : `点击一次骰子，直接显现 ${requiredCardCount} 个对应数字`}
+                          </motion.p>
                         </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
+                      )}
+                    </AnimatePresence>
 
-                {/* Draw supplementary button */}
-                {!isStrictMode && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex justify-center pt-4">
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={drawSupplementaryCard} disabled={loading}
-                      className="px-8 py-3.5 bg-gradient-to-r from-[#F3EEE6] to-[#E7D7B0] border border-[#E8E0D2] text-[#C9A86A] rounded-full font-medium hover:shadow-lg hover:shadow-[#C9A86A]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-                      {loading ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />}
-                      <span>补抽一张牌</span>
+                    {/* ================= 电影级氛围层 (柔和化/圣洁化) ================= */}
+
+                    {/* 1. 柔和夜幕 (Soft Eclipse) - 降低不透明度，温和压暗 */}
+                    <AnimatePresence>
+                      {diceRolling && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0, transition: { duration: 0.8 } }}
+                          className="fixed inset-0 bg-[#3D352E]/30 z-0 pointer-events-none backdrop-blur-sm"
+                        />
+                      )}
+                    </AnimatePresence>
+
+                    {/* 2. 圣洁光晕扩散 (Ethereal Ripple) - 去除暴力的全白闪屏，改为局部柔和散光 */}
+                    <AnimatePresence>
+                      {!diceRolling && lastRollMessage && (
+                        <>
+                          <motion.div
+                            initial={{ scale: 0.5, opacity: 0.8 }}
+                            animate={{ scale: 4, opacity: 0 }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full bg-gradient-to-tr from-[#FFFDF9] to-[#F1E0C0] z-[80] pointer-events-none mix-blend-screen blur-3xl"
+                          />
+                          <motion.div
+                            initial={{ scale: 0.2, opacity: 1, borderWidth: '8px' }}
+                            animate={{ scale: 6, opacity: 0, borderWidth: '0px' }}
+                            transition={{ duration: 1.2, ease: "easeOut" }}
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full border-white/60 z-[80] pointer-events-none shadow-[0_0_40px_rgba(255,255,255,0.5)]"
+                          />
+                        </>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ================= 平移包裹流 (移除震屏) ================= */}
+                    <motion.div
+                      layout
+                      className="w-full flex flex-col items-center z-10"
+                      // 移除了夸张的 x/y 物理震动，仅保留平滑过渡
+                      animate={{ x: 0, y: 0 }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    >
+                      {/* 空间重置的 3D 骰子：当位于结果页时，体积大幅度缩小、高度降低，让出 C 位 */}
+                      <motion.div 
+                        layout 
+                        animate={{ 
+                          scale: isResultsPhase ? 0.6 : 1, 
+                          marginBottom: isResultsPhase ? '-3rem' : '1rem',
+                          marginTop: isResultsPhase ? '-1rem' : '2.5rem'
+                        }} 
+                        transition={{ type: "spring", bounce: 0.2, duration: 1 }}
+                        style={{ perspective: '1200px' }} 
+                        className="flex items-center justify-center relative w-48 h-48 z-10"
+                      >
+                        {/* 骰子底部的环境投影 */}
+                        <motion.div 
+                          animate={diceRolling ? { scale: [1, 1.8, 1], opacity: [0.3, 0.7, 0.3] } : { scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                          transition={{ duration: diceRolling ? 1.5 : 3, repeat: Infinity, ease: 'easeInOut' }}
+                          className="absolute bottom-[-1rem] w-32 h-6 rounded-[100%] bg-[#B8944F]/30 blur-xl"
+                        />
+
+                        {/* 神圣星盘仪 (柔和慢转) */}
+                        <AnimatePresence>
+                          {diceRolling && (
+                            <motion.div
+                              style={{ transformStyle: 'preserve-3d' }}
+                              animate={{ rotateX: [0, 360], rotateY: [0, -360], rotateZ: [0, 180] }}
+                              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                              className="absolute inset-0 flex items-center justify-center pointer-events-none scale-150 opacity-60"
+                            >
+                              <div className="absolute w-full h-full rounded-full border border-[#C9A86A]/40 shadow-[0_0_15px_rgba(201,168,106,0.3)]" style={{ transform: 'rotateX(75deg)' }} />
+                              <div className="absolute w-full h-full rounded-full border border-white/60 shadow-[0_0_15px_rgba(255,255,255,0.4)]" style={{ transform: 'rotateY(75deg)' }} />
+                              <div className="absolute w-full h-full rounded-full border border-[#FFFDF9]/40 shadow-[inset_0_0_10px_rgba(255,255,255,0.2)]" style={{ transform: 'rotateZ(45deg) rotateX(45deg)' }} />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <motion.div
+                          className={`relative w-24 h-24 ${isResultsPhase ? 'cursor-default' : 'cursor-pointer'}`}
+                          style={{ transformStyle: 'preserve-3d' }}
+                          animate={
+                            diceRolling 
+                              ? { rotateX: [0, 360, 720, 1080], rotateY: [0, 180, 540, 720], rotateZ: [0, 180, 360, 540], z: [0, 100, 0], scale: [1, 1.25, 1] } 
+                              : { rotateX: [15, 25, 15], rotateY: [-20, 20, -20] }
+                          }
+                          transition={
+                            diceRolling 
+                              ? { duration: 0.65, ease: 'easeInOut' } 
+                              : { duration: 6, ease: 'easeInOut', repeat: Infinity }
+                          }
+                          onClick={!diceRolling && !isResultsPhase ? rollDiceBatch : undefined}
+                          whileHover={!diceRolling && !isResultsPhase ? { scale: 1.08 } : {}}
+                          whileTap={!diceRolling && !isResultsPhase ? { scale: 0.95 } : {}}
+                        >
+                          {['front', 'back', 'right', 'left', 'top', 'bottom'].map((face) => {
+                            const transforms = {
+                              front: 'translateZ(48px)',
+                              back: 'rotateX(180deg) translateZ(48px)',
+                              right: 'rotateY(90deg) translateZ(48px)',
+                              left: 'rotateY(-90deg) translateZ(48px)',
+                              top: 'rotateX(90deg) translateZ(48px)',
+                              bottom: 'rotateX(-90deg) translateZ(48px)',
+                            };
+                            return (
+                              <div
+                                key={face}
+                                className={`absolute inset-0 flex items-center justify-center rounded-2xl bg-[#FDFBF7] border-[2.5px] border-[#C9A86A]/80 shadow-[inset_0_0_15px_rgba(201,168,106,0.15)] ${
+                                  isResultsPhase ? 'opacity-50 grayscale(50%)' : 'opacity-100'
+                                }`}
+                                style={{ 
+                                  transform: transforms[face as keyof typeof transforms], 
+                                  backfaceVisibility: 'visible',
+                                  backgroundImage: 'radial-gradient(circle at center, #FFFFFF 0%, #FAF6EE 70%, #EFE5D1 100%)'
+                                }}
+                              >
+                                {/* 内圈法阵嵌套 */}
+                                <div className="absolute inset-1.5 rounded-xl border border-[#C9A86A]/30 flex items-center justify-center">
+                                  <div className="absolute inset-2 rounded-full border border-dashed border-[#C9A86A]/40 pointer-events-none" />
+                                </div>
+                                <Dice5 size={32} strokeWidth={1.5} className={`relative z-10 ${isResultsPhase ? 'text-[#C9A86A]/50' : 'text-[#C9A86A]'} drop-shadow-sm`} />
+                              </div>
+                            );
+                          })}
+                        </motion.div>
+                      </motion.div>
+
+                      {/* 视觉反馈文字 (结果产生后隐藏，避免挤占空间) */}
+                      <div className="relative w-full h-0 flex items-center justify-center overflow-visible pointer-events-none z-10">
+                        <AnimatePresence mode="wait">
+                          {diceRolling ? (
+                            <motion.p key="rolling" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="absolute -top-4 text-xs font-serif text-white/90 italic drop-shadow-md">
+                              {replacementLabel ? `重铸「${replacementLabel}」...` : ''}
+                            </motion.p>
+                          ) : null}
+                        </AnimatePresence>
+                      </div>
+
+                    {/* 空间置换：只有在抽到卡牌后，这里才隆重登场 */}
+                      <AnimatePresence mode="popLayout">
+                        {chosenNumbers.length > 0 && (
+                          <motion.div 
+                            layout
+                            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ type: "spring", bounce: 0.5, duration: 1 }}
+                            className="relative w-full max-w-4xl mx-auto pb-12 mt-10 z-10"
+                          >
+                            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+                              {chosenNumbers.map((num, i) => {
+                                const isTarget = replacementIndex === i;
+                                const isDimmed = replacementIndex !== null && !isTarget;
+                                return (
+                                  <motion.div
+                                    key={`${num}-${i}`}
+                                    layout
+                                    initial={{ opacity: 0, scale: 2.5, y: -40 }}
+                                    animate={{ 
+                                      opacity: isDimmed ? 0.2 : 1, 
+                                      scale: isTarget ? 1.08 : 1, 
+                                      y: 0, 
+                                      filter: isDimmed ? 'blur(3px) grayscale(50%)' : 'blur(0px) grayscale(0%)'
+                                    }}
+                                    transition={{ 
+                                      duration: 0.5, 
+                                      type: 'spring', 
+                                      bounce: isTarget || !isDimmed ? 0.5 : 0 
+                                    }}
+                                    className="relative flex flex-col items-center group cursor-pointer"
+                                    onClick={() => !diceRolling && setReplacementIndex((prev) => prev === i ? null : i)}
+                                  >
+                                    <p className="text-[10px] uppercase tracking-widest text-[#5C5349]/50 font-medium mb-1.5">{SPREADS[spreadType].positions[i] || `牌位 ${i + 1}`}</p>
+                                    
+                                    <div className={`relative flex flex-col items-center justify-center w-20 h-20 rounded-full transition-all duration-300 backdrop-blur-xl ${
+                                      isTarget
+                                        ? 'bg-white/90 border border-[#C9A86A]/50 shadow-[0_0_40px_rgba(201,168,106,0.5),inset_0_2px_10px_rgba(255,255,255,0.9)] z-10'
+                                        : 'bg-white/20 border border-white/40 shadow-[0_4px_16px_rgba(201,168,106,0.04),inset_0_1px_4px_rgba(255,255,255,0.4)] group-hover:bg-white/80 group-hover:shadow-[0_8px_24px_rgba(201,168,106,0.15)] group-hover:border-white/80'
+                                    }`}>
+                                      
+                                      {isTarget && (
+                                        <motion.div 
+                                          animate={{ opacity: [0.4, 0.8, 0.4] }} 
+                                          transition={{ repeat: Infinity, duration: 1.5 }}
+                                          className="absolute inset-0 rounded-full border border-[#C9A86A]/60 shadow-[inset_0_0_15px_rgba(201,168,106,0.2)] pointer-events-none" 
+                                        />
+                                      )}
+
+                                      {(!isTarget && !diceRolling) && (
+                                        <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                          <RefreshCw size={10} className="text-[#C9A86A]" />
+                                        </div>
+                                      )}
+
+                                      <span className="relative z-10 text-4xl font-serif text-transparent bg-clip-text bg-gradient-to-br from-[#9B7A39] to-[#C9A86A] font-bold drop-shadow-sm group-hover:scale-110 transition-transform duration-300">
+                                        {num}
+                                      </span>
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  </>
+                );
+              })()}
+
+              {/* 进入翻牌 */}
+              <AnimatePresence>
+                {chosenNumbers.length >= requiredCardCount && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    className="fixed bottom-12 z-50 flex flex-col items-center gap-3 w-full max-w-5xl px-4 pointer-events-none"
+                  >
+                    {/* 直接删除了原先的说明容器 */}
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setStep('flip')}
+                      className="pointer-events-auto flex items-center gap-2 rounded-full bg-[#C9A86A] hover:bg-[#B8944F] px-8 py-3.5 text-sm font-medium text-white shadow-[0_8px_20px_rgba(201,168,106,0.3)] transition-all"
+                    >
+                      <span>进入翻牌</span>
+                      <ArrowRight size={16} />
                     </motion.button>
                   </motion.div>
                 )}
-
-                {error && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
-                    <AlertCircle className="text-red-400 shrink-0" size={20} />
-                    <p className="text-red-600 text-sm font-medium">{error}</p>
-                  </motion.div>
-                )}
-
-                {/* Final action button */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex justify-center pt-6 pb-8">
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={onComplete}
-                    className="px-16 py-4 bg-gradient-to-r from-[#C9A86A] to-[#E7D7B0] text-white rounded-full font-medium hover:shadow-2xl hover:shadow-[#C9A86A]/30 transition-all flex items-center justify-center gap-2 text-lg">
-                    <span>查看历史记录</span><ChevronRight size={20} />
-                  </motion.button>
-                </motion.div>
-              </div>
-              </motion.div>
-            )}
-            </AnimatePresence>
-
+              </AnimatePresence>
+            </div>
           </motion.div>
-          );
-        })()}
+        )}
+
+        {step === 'result' && reading && session && (
+          <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-[#C9A86A]" size={32} /></div>}>
+          <ResultPage
+            session={session}
+            reading={reading}
+            selectedCards={selectedCards}
+            spreadType={spreadType}
+            supplementaryCards={supplementaryCards}
+            overallSupplementaryCards={overallSupplementaryCards}
+            generalSupplementaryCards={generalSupplementaryCards}
+            supplementaryCardsByLabel={supplementaryCardsByLabel}
+            deepAnalysis={deepAnalysis}
+            expandedCardIndex={expandedCardIndex}
+            setExpandedCardIndex={setExpandedCardIndex}
+            portraitExpanded={portraitExpanded}
+            setPortraitExpanded={setPortraitExpanded}
+            advancedOpen={advancedOpen}
+            setAdvancedOpen={setAdvancedOpen}
+            drawSupplementaryCard={drawSupplementaryCard}
+            generateDeepAnalysis={generateDeepAnalysis}
+            exportPoster={exportPoster}
+            loading={loading}
+            deepAnalysisLoading={deepAnalysisLoading}
+            isStrictMode={isStrictMode}
+            error={error}
+            setError={setError}
+            onComplete={onComplete}
+          />
+          </Suspense>
+        )}
       </AnimatePresence>
+
+      {/* Immersive loading overlay when startReading() is called from flip step */}
+      <AnimatePresence>
+        {loading && progressStage && step === 'flip' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex flex-col items-center justify-center"
+            style={{ background: 'radial-gradient(ellipse at center, rgba(26,20,16,0.95) 0%, rgba(13,10,7,0.98) 100%)' }}
+          >
+            <div className="flex flex-col items-center gap-6 text-center px-6">
+              {/* Rotating card-back icon with pulse */}
+              <div className="relative">
+                <motion.div
+                  animate={{ rotateY: [0, 180, 360] }}
+                  transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                  className="w-16 h-24 rounded-lg border border-[#C9A86A]/30 flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, rgba(201,168,106,0.15), rgba(201,168,106,0.05))', transformStyle: 'preserve-3d' }}
+                >
+                  <Sparkles size={24} className="text-[#C9A86A]" />
+                </motion.div>
+                <motion.div
+                  animate={{ scale: [1, 1.6, 1], opacity: [0.3, 0, 0.3] }}
+                  transition={{ repeat: Infinity, duration: 2.5 }}
+                  className="absolute inset-0 rounded-lg border border-[#C9A86A]/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <motion.p
+                  key={progressStage}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-lg font-serif text-[#E7D7B0]"
+                >
+                  {progressStage}
+                </motion.p>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={astroPhraseIdx}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 0.6 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xs text-[#C9A86A]/60 italic"
+                  >
+                    {ASTRO_PHRASES[astroPhraseIdx]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-[#C9A86A]/40 font-mono">
+                <Loader2 size={12} className="animate-spin" />
+                <span>{elapsedSec}s</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Loading Overlay for supplement calls on result page only */}
+      {loading && step === 'result' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-[#FAF7F2]/90 backdrop-blur-md flex flex-col items-center justify-center gap-4" role="alert" aria-live="assertive">
+          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 3, ease: "linear" }}>
+            <Sparkles size={44} className="text-[#C9A86A]" />
+          </motion.div>
+          <div style={{ width: '80vw', maxWidth: '420px', minHeight: '48px' }} className="flex items-center justify-center relative">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={astroPhraseIdx}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.45 }}
+                className="text-lg sm:text-xl font-serif text-[#3D352E] italic text-center whitespace-nowrap"
+              >
+                {ASTRO_PHRASES[astroPhraseIdx]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+          {progressStage && (
+            <p className="text-sm font-mono text-[#C9A86A]/80 tracking-wide animate-pulse text-center whitespace-nowrap">
+              [{progressStage}]
+            </p>
+          )}
+          <p className="text-xs text-[#5C5349] tabular-nums">已等待 {elapsedSec}s</p>
+          <div className="w-40 h-0.5 bg-[#E7D7B0]/40 rounded-full overflow-hidden">
+            <motion.div className="h-full bg-[#C9A86A]/60 rounded-full"
+              animate={{ x: ['-100%', '100%'] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
+              style={{ width: '60%' }}
+            />
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

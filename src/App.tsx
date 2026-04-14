@@ -9,12 +9,14 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function App() {
   const [view, setView] = useState<'home' | 'flow' | 'history'>('home');
   const [showSettings, setShowSettings] = useState(false);
+  const [replaySession, setReplaySession] = useState<any>(null);
+  const [flowKey, setFlowKey] = useState(0);
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-[#FAF7F2] text-[#3D352E] font-sans selection:bg-[#C9A86A]/20">
         {/* Navigation */}
-        <nav className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 flex justify-between items-center backdrop-blur-xl bg-[#FAF7F2]/80 border-b border-[#E8E0D2]">
+        <nav className="fixed top-0 left-0 right-0 z-[200] px-4 sm:px-6 py-3 flex justify-between items-center backdrop-blur-xl bg-[#FAF7F2]/80 border-b border-[#E8E0D2]">
           <div
             className="cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => setView('home')}
@@ -23,7 +25,7 @@ export default function App() {
             <div className="text-[9px] tracking-[0.4em] text-[#5C5349]/60 uppercase">Tarot Flow</div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
-            <button onClick={() => setView('flow')} aria-current={view === 'flow' ? 'page' : undefined} className={`flex items-center gap-2 text-sm uppercase tracking-widest ${view === 'flow' ? 'text-[#C9A86A]' : 'text-[#5C5349] hover:text-[#3D352E]'}`}>
+            <button onClick={() => { setReplaySession(null); setFlowKey(k => k + 1); setView('flow'); }} aria-current={view === 'flow' ? 'page' : undefined} className={`flex items-center gap-2 text-sm uppercase tracking-widest ${view === 'flow' ? 'text-[#C9A86A]' : 'text-[#5C5349] hover:text-[#3D352E]'}`}>
               <Sparkles size={16} />
               <span className="hidden sm:inline">新占卜</span>
             </button>
@@ -66,7 +68,7 @@ export default function App() {
                     每一轮牌序固定，每一张都有位置
                   </p>
                   <button
-                    onClick={() => setView('flow')}
+                    onClick={() => { setReplaySession(null); setFlowKey(k => k + 1); setView('flow'); }}
                     className="inline-flex items-center gap-2 px-10 py-3.5 bg-[#C9A86A] text-white rounded-full font-medium hover:bg-[#B8944F] transition-colors shadow-lg shadow-[#C9A86A]/15"
                   >
                     <Sparkles size={16} />
@@ -91,7 +93,7 @@ export default function App() {
                       ].map((s) => (
                         <button
                           key={s.name}
-                          onClick={() => setView('flow')}
+                          onClick={() => { setReplaySession(null); setFlowKey(k => k + 1); setView('flow'); }}
                           className="shrink-0 w-28 p-4 rounded-2xl bg-[#F3EEE6] border border-[#E8E0D2] hover:border-[#C9A86A]/30 transition-all text-left group"
                         >
                           <span className="text-[10px] text-[#C9A86A] font-mono">{s.count}张</span>
@@ -105,8 +107,8 @@ export default function App() {
               </motion.div>
             )}
 
-            {view === 'flow' && <TarotFlow onComplete={() => setView('history')} />}
-            {view === 'history' && <History />}
+            {view === 'flow' && <React.Fragment key={flowKey}><TarotFlow onComplete={() => setView('history')} initialSessionRecord={replaySession} /></React.Fragment>}
+            {view === 'history' && <History onReplay={(record) => { setReplaySession(record); setView('flow'); }} />}
           </AnimatePresence>
         </main>
       </div>
