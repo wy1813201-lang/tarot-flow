@@ -1,16 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import TarotFlow from './components/TarotFlow';
 import History from './components/History';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Sparkles, History as HistoryIcon, Info, Settings2 } from 'lucide-react';
 import Settings from './components/Settings';
+import AuthModal from './components/AuthModal';
+import UserMenu from './components/UserMenu';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from './contexts/AuthContext';
 
 export default function App() {
   const [view, setView] = useState<'home' | 'flow' | 'history'>('home');
   const [showSettings, setShowSettings] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [replaySession, setReplaySession] = useState<any>(null);
   const [flowKey, setFlowKey] = useState(0);
+  const { user, configured, loading } = useAuth();
+
+  const startFlow = useCallback(() => {
+    if (configured && !user) {
+      setShowAuth(true);
+      return;
+    }
+    setReplaySession(null);
+    setFlowKey(k => k + 1);
+    setView('flow');
+  }, [configured, user]);
 
   return (
     <ErrorBoundary>
@@ -21,11 +36,11 @@ export default function App() {
             className="cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => setView('home')}
           >
-            <div className="text-lg font-serif font-light text-[#3D352E]">灵签局</div>
-            <div className="text-[9px] tracking-[0.4em] text-[#5C5349]/60 uppercase">Tarot Flow</div>
+            <div className="text-lg font-serif font-light text-[#3D352E]">星谶</div>
+            <div className="text-[9px] tracking-[0.4em] text-[#5C5349]/60 uppercase">Starprophet</div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
-            <button onClick={() => { setReplaySession(null); setFlowKey(k => k + 1); setView('flow'); }} aria-current={view === 'flow' ? 'page' : undefined} className={`flex items-center gap-2 text-sm uppercase tracking-widest ${view === 'flow' ? 'text-[#C9A86A]' : 'text-[#5C5349] hover:text-[#3D352E]'}`}>
+            <button onClick={startFlow} aria-current={view === 'flow' ? 'page' : undefined} className={`flex items-center gap-2 text-sm uppercase tracking-widest ${view === 'flow' ? 'text-[#C9A86A]' : 'text-[#5C5349] hover:text-[#3D352E]'}`}>
               <Sparkles size={16} />
               <span className="hidden sm:inline">新占卜</span>
             </button>
@@ -37,6 +52,7 @@ export default function App() {
               <Settings2 size={16} />
               <span className="hidden sm:inline">设置</span>
             </button>
+            <UserMenu onLoginClick={() => setShowAuth(true)} />
           </div>
         </nav>
 
@@ -61,14 +77,14 @@ export default function App() {
                     <Sparkles size={28} className="text-[#C9A86A]" />
                   </motion.div>
                   <h2 className="text-3xl sm:text-4xl font-serif leading-tight text-[#3D352E]">
-                    欢迎来到灵签局
+                    欢迎来到星谶
                   </h2>
                   <p className="text-[#5C5349] text-sm leading-relaxed">
-                    洗牌 · 选数 · 翻牌 · 解读<br />
-                    每一轮牌序固定，每一张都有位置
+                    以星辰之名，洞见命运之谶<br />
+                    洗牌 · 选数 · 翻牌 · AI 深度解读
                   </p>
                   <button
-                    onClick={() => { setReplaySession(null); setFlowKey(k => k + 1); setView('flow'); }}
+                    onClick={startFlow}
                     className="inline-flex items-center gap-2 px-10 py-3.5 bg-[#C9A86A] text-white rounded-full font-medium hover:bg-[#B8944F] transition-colors shadow-lg shadow-[#C9A86A]/15"
                   >
                     <Sparkles size={16} />
@@ -93,7 +109,7 @@ export default function App() {
                       ].map((s) => (
                         <button
                           key={s.name}
-                          onClick={() => { setReplaySession(null); setFlowKey(k => k + 1); setView('flow'); }}
+                          onClick={startFlow}
                           className="shrink-0 w-28 p-4 rounded-2xl bg-[#F3EEE6] border border-[#E8E0D2] hover:border-[#C9A86A]/30 transition-all text-left group"
                         >
                           <span className="text-[10px] text-[#C9A86A] font-mono">{s.count}张</span>
@@ -113,6 +129,7 @@ export default function App() {
         </main>
       </div>
       <Settings open={showSettings} onClose={() => setShowSettings(false)} />
+      <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
     </ErrorBoundary>
   );
 }
